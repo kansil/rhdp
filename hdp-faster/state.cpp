@@ -2,6 +2,15 @@
 #include <algorithm>
 #include "state.h"
 
+
+RhoMatrix::RhoMatrix() {
+
+}
+
+RhoMatrix::~RhoMatrix() {
+
+}
+
 DocState::DocState() {
   words_ = NULL;
 }
@@ -44,7 +53,7 @@ void HDPState::init_hdp_state(double eta, double gamma, double alpha, int size_v
   size_vocab_ = size_vocab;
 
   num_topics_ = 0;
-  vct_ptr_resize(&topic_lambda_, INIT_SIZE, size_vocab_); 
+  vct_ptr_resize(&topic_lambda_, INIT_SIZE, size_vocab_);
   word_counts_by_topic_.resize(INIT_SIZE, 0);
   beta_u_.resize(INIT_SIZE, 0);
   pi_.resize(INIT_SIZE, 0.0);
@@ -58,9 +67,9 @@ void HDPState::copy_hdp_state(const HDPState& src_state) {
   size_vocab_ = src_state.size_vocab_;
 
   num_topics_ = src_state.num_topics_;
-  
+
   if (topic_lambda_.size() < src_state.topic_lambda_.size()) {
-    vct_ptr_resize(&topic_lambda_, src_state.topic_lambda_.size(), size_vocab_); 
+    vct_ptr_resize(&topic_lambda_, src_state.topic_lambda_.size(), size_vocab_);
   }
   for (int i = 0; i < num_topics_; ++i) {
     memcpy(topic_lambda_[i], src_state.topic_lambda_[i], size_vocab_ * sizeof(int));
@@ -104,7 +113,7 @@ void HDPState::load_hdp_state(const char* name) {
   fscanf(info_file, "num_topics: %d\n", &num_topics_);
   fclose(info_file);
 
-  word_counts_by_topic_.resize(num_topics_ + INIT_SIZE, 0.0); 
+  word_counts_by_topic_.resize(num_topics_ + INIT_SIZE, 0.0);
   sprintf(filename, "%s.counts", name);
   FILE* topic_count_file = fopen(filename, "r");
   for (int k = 0; k < num_topics_; ++k) {
@@ -171,7 +180,7 @@ void HDPState::save_hdp_state(const char* name) {
     fprintf(topic_file, "\n");
   }
   fclose(topic_file);
-  
+
   sprintf(filename, "%s.beta", name);
   FILE* stick_file = fopen(filename, "w");
   for (int k = 0; k < num_topics_; ++k) {
@@ -187,7 +196,7 @@ void HDPState::save_hdp_state(const char* name) {
   fprintf(pi_file, "%f\n", pi_left_);
   fclose(pi_file);
 }
- 
+
 HDP::HDP() {
   doc_states_ = NULL;
   hdp_state_ = NULL;
@@ -251,7 +260,7 @@ int HDP::iterate_gibbs_state(bool remove, bool permute) {
   for (int j = 0; j < num_docs_; ++j) {
     DocState* doc_state = doc_states_[j];
     for (int i = 0; i < doc_state->doc_length_; ++i) {
-      total_change += sample_word_assignment(doc_state, i, remove, &p); 
+      total_change += sample_word_assignment(doc_state, i, remove, &p);
     }
     sample_table_counts(doc_state, &p);
     if (j % 10 == 0) {
@@ -264,11 +273,11 @@ int HDP::iterate_gibbs_state(bool remove, bool permute) {
 
 int HDP::sample_word_assignment(DocState* doc_state, int i, bool remove, vct* p) {
   int old_k = -1, k;
-  if (remove) { 
+  if (remove) {
     old_k = doc_state->words_[i].topic_assignment_;
     doc_state_update(doc_state, i, -1);
   }
-  
+
   if ((int)p->size() < hdp_state_->num_topics_ + 1) {
     p->resize(2 * hdp_state_->num_topics_ + 1);
   }
@@ -277,7 +286,7 @@ int HDP::sample_word_assignment(DocState* doc_state, int i, bool remove, vct* p)
   int w = doc_state->words_[i].word_;
 
   double p_w = 0.0;
-  set<int>::iterator it = unique_topic_by_word_[w].begin(); 
+  set<int>::iterator it = unique_topic_by_word_[w].begin();
   int j = 0;
   for (; it != unique_topic_by_word_[w].end(); ++it, ++j) {
     k = *it;
@@ -300,8 +309,8 @@ int HDP::sample_word_assignment(DocState* doc_state, int i, bool remove, vct* p)
     u = u - p_w;
     if (u < tail_prob) { // in the tail region.
       k = hdp_state_->num_topics_;
-    } else { 
-      u = (u - tail_prob) / hdp_state_->eta_; 
+    } else {
+      u = (u - tail_prob) / hdp_state_->eta_;
       if (u < doc_prob_sum_[d]) { // In the doc region,
         it = unique_topic_by_doc_[d].begin();
         total_p = 0.0;
@@ -329,7 +338,7 @@ int HDP::sample_word_assignment(DocState* doc_state, int i, bool remove, vct* p)
 void HDP::doc_state_update(DocState* doc_state, int i, int update) {
   int d = doc_state->doc_id_;
   int w = doc_state->words_[i].word_;
-  int c = doc_state->words_[i].count_; 
+  int c = doc_state->words_[i].count_;
   int k = doc_state->words_[i].topic_assignment_;
   //assert(k >= 0); // we must have it assigned before or assigned to a new one.
 
@@ -352,12 +361,12 @@ void HDP::doc_state_update(DocState* doc_state, int i, int update) {
   if (update < 0 ) {
     if (hdp_state_->topic_lambda_[k][w] == 0)
       unique_topic_by_word_[w].erase(k);
-    if (word_counts_by_topic_doc_[k][d] == 0) 
+    if (word_counts_by_topic_doc_[k][d] == 0)
       unique_topic_by_doc_[d].erase(k);
   }
 
   if (update > 0 &&  k == hdp_state_->num_topics_) { // a new topic is generated.
-    hdp_state_->num_topics_ ++; 
+    hdp_state_->num_topics_ ++;
     double new_stick = rbeta(1.0, hdp_state_->gamma_) * hdp_state_->pi_left_;
     hdp_state_->pi_left_ = hdp_state_->pi_left_ - new_stick;
     hdp_state_->pi_[k] = new_stick;
@@ -390,7 +399,7 @@ void HDP::sample_table_counts(DocState* doc_state, vct* p) {
     hdp_state_->beta_u_[k] -= table_counts_by_topic_doc_[k][d];
     int n = word_counts_by_topic_doc_[k][d];
     if (n < 2) {
-      table_counts_by_topic_doc_[k][d] = n; 
+      table_counts_by_topic_doc_[k][d] = n;
     } else {
       if ((int)p->size() < n) {
         p->resize(2 * n + 1);
@@ -433,7 +442,7 @@ void HDP::sample_top_level_proportions() {
   double etaW = hdp_state_->size_vocab_ * hdp_state_->eta_;
   smoothing_prob_sum_ = 0.0;
   for (int k = 0; k < hdp_state_->num_topics_; ++k) {
-    smoothing_prob_[k] = hdp_state_->alpha_ * hdp_state_->pi_[k] / (hdp_state_->word_counts_by_topic_[k] + etaW);    
+    smoothing_prob_[k] = hdp_state_->alpha_ * hdp_state_->pi_[k] / (hdp_state_->word_counts_by_topic_[k] + etaW);
     smoothing_prob_sum_ += smoothing_prob_[k];
   }
 }
@@ -447,25 +456,25 @@ void HDP::sample_prior_sticks() {
     hdp_state_->pi_[k] = rbeta(a, b) * hdp_state_->pi_left_;
     hdp_state_->pi_left_ -= hdp_state_->pi_[k];
   }
-  
+
 
   double etaW = size_vocab_ * eta_;
   smoothing_prob_sum_ = 0.0;
   for (int k = 0; k < hdp_state_->num_topics_; ++k) {
-    smoothing_prob_[k] = alpha_ * hdp_state_->pi_[k] / (hdp_state_->word_counts_by_topic_[k] + etaW);    
+    smoothing_prob_[k] = alpha_ * hdp_state_->pi_[k] / (hdp_state_->word_counts_by_topic_[k] + etaW);
     smoothing_prob_sum_ += smoothing_prob_[k];
   }
 }
 
 void HDP::sample_posterior_sticks() {
-  
+
   double cum_count = 0;
   fill(hdp_state_->beta_v_.begin(), hdp_state_->beta_v_.end(), 0.0);
   for (int k = hdp_state_->num_topics_ - 1; k >= 0; --k) {
     hdp_state_->beta_v_[k] = cum_count;
     cum_count += hdp_state_->beta_u_[k];
   }
-  
+
   sample_prior_sticks();
 }
 */
@@ -489,7 +498,7 @@ void HDP::compact_hdp_state() {
       if (new_k != k) {
         for (int w = 0; w < hdp_state_->size_vocab_; ++w) {
           if (unique_topic_by_word_[w].erase(k) > 0) {
-            unique_topic_by_word_[w].insert(new_k);        
+            unique_topic_by_word_[w].insert(new_k);
           }
         }
         for (int d = 0; d < num_docs_; ++d) {
@@ -525,7 +534,7 @@ double HDP::log_likelihood(const HDPState* old_hdp_state) {
     likelihood -= lgamma(hdp_state_->alpha_ + doc_states_[d]->doc_length_);
     for (int k = 0; k < hdp_state_->num_topics_; ++k) {
       if (word_counts_by_topic_doc_[k][d] > 0) {
-        likelihood += lgamma(hdp_state_->alpha_ * hdp_state_->pi_[k] + word_counts_by_topic_doc_[k][d]);        
+        likelihood += lgamma(hdp_state_->alpha_ * hdp_state_->pi_[k] + word_counts_by_topic_doc_[k][d]);
         likelihood -= lg_alpha_pi[k];
       }
     }
@@ -644,4 +653,3 @@ void HDP::sample_second_level_concentration(double alpha_a, double alpha_b) {
     hdp_state_->alpha_ = rgamma(shape + n - sum_s, 1.0 / rate);
   }
 }
-

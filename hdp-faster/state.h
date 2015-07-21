@@ -29,8 +29,25 @@ public:
   DocState();
   ~DocState();
 public:
- void setup_state_from_doc(const Document* doc); 
+ void setup_state_from_doc(const Document* doc);
 };
+
+
+class RhoMatrix {
+private:
+    int size = -1;
+    double** matrix = NULL;
+
+public:
+    RhoMatrix();
+    ~RhoMatrix();
+    void read_data(const char* data_filename, int OFFSET=0);
+    int read_data(FILE* fileptr, int size, int OFFSET=0);
+    int get_vocab_size();
+    double* get_word_row(int word_idx);
+
+
+}
 
 class HDPState {
 public:
@@ -52,7 +69,7 @@ public:
   // Hyper parameters
   double eta_;
   double gamma_;
-  double alpha_; 
+  double alpha_;
 
   int num_topics_;
   int size_vocab_;
@@ -62,7 +79,7 @@ class HDP {
 public: // Not fixed.
   int num_docs_;
   DocState** doc_states_;
-  
+
   vector<int*> word_counts_by_topic_doc_;  // Number of words by topic, doc
   vector<int*> table_counts_by_topic_doc_; // Number of tables by topic, doc.
 
@@ -82,7 +99,7 @@ public:
 public:
   HDP();
   ~HDP();
-  
+
   void init_hdp(double eta, double gamma, double alpha, int size_vocab);
   void setup_doc_states(const vector<Document* >& docs);
   void remove_doc_states();
@@ -101,7 +118,7 @@ public:
   void hyper_inference(double gamma_a, double gamma_b, double alpha_a, double alpha_b);
 
   void init_fast_gibbs_sampling_variables();
-  void save_doc_states(const char* name); 
+  void save_doc_states(const char* name);
   void sample_first_level_concentration(double gamma_a, double gamma_b);
   void sample_second_level_concentration(double alpha_a, double alpha_b);
 };
