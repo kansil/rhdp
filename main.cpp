@@ -9,9 +9,10 @@ gsl_rng * RANDOM_NUMBER = NULL;
 void print_usage_and_exit() {
   // print usage information
 
-    printf("\nC++ implementation of Gibbs sampling for\n");
-    printf("Kernel Smoothed Hierarchical Dirichlet Process\n");    printf("Author: Aybar C. Acar, acacar@metu.edu.tr, Grad. School of Informatics, Middle East Technical University\n");
-    printf("Original version: Chong Wang, chongw@cs.princeton.edu, Computer Science Department, Princeton University.\n");
+    printf("\nC++ implementation of Gibbs sampling for the Kernel Smoothed Hierarchical Dirichlet Process\n");
+    printf("Author: Aybar C. Acar, acacar@metu.edu.tr, Grad. School of Informatics, Middle East Technical University.\n\n");
+    printf("Forked from: https://github.com/Blei-Lab/hdp\n");
+    printf("Original author: Chong Wang, chongw@cs.princeton.edu, Computer Science Department, Princeton University.\n\n");
 
     printf("usage:\n");
     printf("      shdp               [options]\n");
