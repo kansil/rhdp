@@ -7,8 +7,8 @@ LDFLAGS = -lgsl -lm -lgslcblas #-latlas
 GSL_INCLUDE = /u/chongw/libs/gsl/include
 GSL_LIB = /u/chongw/libs/gsl/lib
 
-GSL_INCLUDE_MAC = /opt/local/include/
-GSL_LIB_MAC = /opt/local/lib/
+GSL_INCLUDE_MAC = /usr/local/include/
+GSL_LIB_MAC = /usr/local/lib/
 
 LSOURCE = main.cpp utils.cpp stirln.cpp corpus.cpp state.cpp
 LHEADER = utils.h stirln.h corpus.h state.h
