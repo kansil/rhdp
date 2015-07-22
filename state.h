@@ -45,6 +45,7 @@ public:
     int read_matrix(FILE* fileptr, int size, int OFFSET=0);
     int get_vocab_size();
     double* get_word_row(int word_idx);
+    double  get_word_2_word(int word_idx, int word2_idx);
 
 
 };

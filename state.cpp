@@ -8,12 +8,28 @@ RhoMatrix::RhoMatrix() {
 }
 
 RhoMatrix::~RhoMatrix() {
+    free_rhomatrix();
+}
+
+void RhoMatrix::free_rhomatrix() {
+    if (matrix != NULL) {
+        for (int i = 0; i < size; i++)
+        {
+            delete[] matrix[i];
+        }
+        delete[] matrix;
+    }
+    size = 0;
+}
+
+void RhoMatrix::read_matrix(FILE* fileptr) {
+    free_rhomatrix();
 
 }
 
-
-void RhoMatrix::read_matrix(const char* data_filename, int OFFSET) {
-
+void RhoMatrix::read_matrix(const char* data_filename) {
+    FILE* fileptr = fopen(data_filename, "r");
+    read_matrix(fileptr)
 }
 DocState::DocState() {
   words_ = NULL;
