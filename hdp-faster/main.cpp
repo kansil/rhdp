@@ -10,7 +10,7 @@ void print_usage_and_exit() {
   // print usage information
 
     printf("\nC++ implementation of Gibbs sampling for\n");
-    printf("Externally Smoothed Hierarchical Dirichlet Process\n");    printf("Author: Aybar C. Acar, acacar@metu.edu.tr, Grad. School of Informatics, Middle East Technical University\n");
+    printf("Kernel Smoothed Hierarchical Dirichlet Process\n");    printf("Author: Aybar C. Acar, acacar@metu.edu.tr, Grad. School of Informatics, Middle East Technical University\n");
     printf("Original version: Chong Wang, chongw@cs.princeton.edu, Computer Science Department, Princeton University.\n");
 
     printf("usage:\n");
@@ -29,13 +29,13 @@ void print_usage_and_exit() {
 
     printf("      data parameters:\n");
     printf("      --train_data:      the training data file/pattern, in lda-c format.\n");
-    printf("      --rhomatrix:       the smoothing matrix, in space delimited format.\n");
-    printf("\n");
+        printf("\n");
 
     printf("      model parameters:\n");
     printf("      --eta:             the topic Dirichlet parameter, default 0.05.\n");
     printf("      --gamma:           the first-level concentration parameter in hdp, default 1.0.\n");
     printf("      --alpha:           the second-level concentration parameter in hdp, default 1.0.\n");
+    printf("      %c[4m--rhomatrix:       the smoothing matrix, in space delimited format, required  %c[0m\n",0x1B,0x1B );
 
     printf("      --gamma_a:        shape for 1st-level concentration parameter, default 1.0.\n");
     printf("      --gamma_b:        scale for 1st-level concentration parameter, default 1.0.\n");
@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
 
   // Data parameters.
   char* train_data = NULL;
-  char* rhomatrix = NULL;
+  char* rhomatrix_fn = NULL;
 
   // Model parameters.
   double eta = 0.01;
@@ -193,8 +193,8 @@ int main(int argc, char* argv[]) {
     int total_time = 0;
     int iter = 0;
 
-    SHDP* hdp = new SHDP();
-    hdp->init_hdp(eta, gamma, alpha, c_train->size_vocab_, rho);
+    HDP* hdp = new HDP();
+    hdp->init_hdp(eta, gamma, alpha, c_train->size_vocab_);
 
     // Setting up the hdp state.
     hdp->setup_doc_states(c_train->docs_);

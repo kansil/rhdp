@@ -11,6 +11,10 @@ RhoMatrix::~RhoMatrix() {
 
 }
 
+
+void RhoMatrix::read_matrix(const char* data_filename, int OFFSET) {
+
+}
 DocState::DocState() {
   words_ = NULL;
 }

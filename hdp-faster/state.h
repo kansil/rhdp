@@ -41,13 +41,13 @@ private:
 public:
     RhoMatrix();
     ~RhoMatrix();
-    void read_data(const char* data_filename, int OFFSET=0);
-    int read_data(FILE* fileptr, int size, int OFFSET=0);
+    void read_matrix(const char* data_filename, int OFFSET=0);
+    int read_matrix(FILE* fileptr, int size, int OFFSET=0);
     int get_vocab_size();
     double* get_word_row(int word_idx);
 
 
-}
+};
 
 class HDPState {
 public:
@@ -73,6 +73,10 @@ public:
 
   int num_topics_;
   int size_vocab_;
+};
+
+class SHDPState: public HDPState {
+    void init_hdp_state(double eta, double gamma, double alpha, int size_vocab, RhoMatrix* rho);
 };
 
 class HDP {
@@ -123,4 +127,8 @@ public:
   void sample_second_level_concentration(double alpha_a, double alpha_b);
 };
 
+
+class SHDP : public HDP {
+
+};
 #endif // STATE_H

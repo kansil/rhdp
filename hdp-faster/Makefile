@@ -14,17 +14,17 @@ LSOURCE = main.cpp utils.cpp stirln.cpp corpus.cpp state.cpp
 LHEADER = utils.h stirln.h corpus.h state.h
 
 mac: $(LSOURCE) $(HEADER)
-	  $(CC) -I$(GSL_INCLUDE_MAC) -L$(GSL_LIB_MAC) $(LSOURCE) -o hdp $(LDFLAGS)
+	  $(CC) -I$(GSL_INCLUDE_MAC) -L$(GSL_LIB_MAC) $(LSOURCE) -o shdp $(LDFLAGS)
 
 mac-d: $(LSOURCE) $(HEADER)
-	  $(CC) -g -I$(GSL_INCLUDE_MAC) -L$(GSL_LIB_MAC) $(LSOURCE) -o hdp $(LDFLAGS)
+	  $(CC) -g -I$(GSL_INCLUDE_MAC) -L$(GSL_LIB_MAC) $(LSOURCE) -o shdp $(LDFLAGS)
 
 linux: $(LSOURCE) $(HEADER)
-	  $(CC) -I$(GSL_INCLUDE) -L$(GSL_LIB) $(LSOURCE) -o hdp $(LDFLAGS)
+	  $(CC) -I$(GSL_INCLUDE) -L$(GSL_LIB) $(LSOURCE) -o shdp $(LDFLAGS)
 
 linux-d: $(LSOURCE) $(HEADER)
-	  $(CC) -g -I$(GSL_INCLUDE) -L$(GSL_LIB) $(LSOURCE) -o hdp $(LDFLAGS)
+	  $(CC) -g -I$(GSL_INCLUDE) -L$(GSL_LIB) $(LSOURCE) -o shdp $(LDFLAGS)
 
 
 clean:
-	-rm hdp
+	-rm shdp
