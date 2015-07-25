@@ -3,7 +3,7 @@
 #ifndef _STIRLN_H
 #define	_STIRLN_H
 
-#include "utils.h"
+#include "utils.hpp"
 #define log_zero -10000.0
 
 class Stirling {

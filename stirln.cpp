@@ -1,5 +1,5 @@
-#include "stirln.h"
-#include "utils.h"
+#include "stirln.hpp"
+#include "utils.hpp"
 
 Stirling::Stirling() {
   log_stirling_num_.reserve(200);

@@ -1,11 +1,11 @@
 #ifndef STATE_H
 #define STATE_H
 
-#include <set>
+//#include <set.h>
 
-#include "utils.h"
-#include "corpus.h"
-#include "stirln.h"
+#include "utils.hpp"
+#include "corpus.hpp"
+#include "stirln.hpp"
 
 using namespace std;
 
@@ -41,8 +41,9 @@ private:
 public:
     RhoMatrix();
     ~RhoMatrix();
-    void read_matrix(const char* data_filename, int OFFSET=0);
-    int read_matrix(FILE* fileptr, int size, int OFFSET=0);
+    void read_matrix(const char* data_filename);
+    int read_matrix(FILE* fileptr);
+    void free_rhomatrix();
     int get_vocab_size();
     double* get_word_row(int word_idx);
     double  get_word_2_word(int word_idx, int word2_idx);

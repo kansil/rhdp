@@ -1,4 +1,4 @@
-#include "corpus.h"
+#include "corpus.hpp"
 #include <assert.h>
 #include <stdio.h>
 

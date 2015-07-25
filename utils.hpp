@@ -30,7 +30,7 @@ int compare (const void * a, const void * b);
 inline double safe_log(double x) {
   if (x <= 0)
     return(-10000);
-  else 
+  else
     return(log(x));
 }
 

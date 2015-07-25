@@ -1,8 +1,8 @@
 #include <libgen.h>
 #include <string.h>
-#include "corpus.h"
-#include "state.h"
-#include "utils.h"
+#include "corpus.hpp"
+#include "state.hpp"
+#include "utils.hpp"
 
 gsl_rng * RANDOM_NUMBER = NULL;
 
@@ -11,7 +11,7 @@ void print_usage_and_exit() {
 
     printf("\nC++ implementation of Gibbs sampling for the Kernel Smoothed Hierarchical Dirichlet Process\n");
     printf("Author: Aybar C. Acar, acacar@metu.edu.tr, Grad. School of Informatics, Middle East Technical University.\n\n");
-    printf("Forked from: https://github.com/Blei-Lab/hdp\n");
+    printf("Forked from: https://github.com/Blei-Lab/hdp \n");
     printf("Original author: Chong Wang, chongw@cs.princeton.edu, Computer Science Department, Princeton University.\n\n");
 
     printf("usage:\n");
@@ -30,7 +30,7 @@ void print_usage_and_exit() {
 
     printf("      data parameters:\n");
     printf("      --train_data:      the training data file/pattern, in lda-c format.\n");
-        printf("\n");
+    printf("\n");
 
     printf("      model parameters:\n");
     printf("      --eta:             the topic Dirichlet parameter, default 0.05.\n");
@@ -50,7 +50,6 @@ void print_usage_and_exit() {
     printf("      --model_prefix:    the model_prefix.\n");
 
     printf("*******************************************************************************************************\n");
-
     exit(0);
 }
 
@@ -96,7 +95,7 @@ int main(int argc, char* argv[]) {
     else if (!strcmp(argv[i], "--save_lag"))        save_lag = atoi(argv[++i]);
 
     else if (!strcmp(argv[i], "--train_data"))      train_data = argv[++i];
-    else if (!strcmp(argv[i], "--rhomatrix"))       rhomatrix_fn = argv[++i];
+    else if (!strcmp(argv[i], "--rho_matrix"))       rhomatrix_fn = argv[++i];
     else if (!strcmp(argv[i], "--eta"))             eta = atof(argv[++i]);
     else if (!strcmp(argv[i], "--gamma"))           gamma = atof(argv[++i]);
     else if (!strcmp(argv[i], "--alpha"))           alpha = atof(argv[++i]);
@@ -156,7 +155,7 @@ int main(int argc, char* argv[]) {
 
     fprintf(setting_file, "\nData parameters:\n");
     fprintf(setting_file, "train_data: %s\n", train_data);
-    fprintf(setting_file, "rhomatrix: %s\n", rhomatrix_fn);
+    fprintf(setting_file, "rho_matrix: %s\n", rhomatrix_fn);
     fprintf(setting_file, "\nModel parameters:\n");
     fprintf(setting_file, "eta: %.4lf\n", eta);
     fprintf(setting_file, "gamma: %.4lf\n", gamma);

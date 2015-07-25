@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <algorithm>
-#include "state.h"
+#include "state.hpp"
 
 
 RhoMatrix::RhoMatrix() {
@@ -22,15 +22,63 @@ void RhoMatrix::free_rhomatrix() {
     size = 0;
 }
 
-void RhoMatrix::read_matrix(FILE* fileptr) {
+int RhoMatrix::read_matrix(FILE* fileptr) {
     free_rhomatrix();
+    char* lineptr = NULL;
+    size_t linesize = 0;
 
+// Get the size of the vocabulary
+    rewind(fileptr);
+    getline(&lineptr, &linesize, fileptr);
+    lineptr[strlen(lineptr) - 1] = 0; //Chop off the newline
+
+    char* token = strtok(lineptr," ");
+    int tokencount = 0;
+    while (token != NULL)
+    {
+        tokencount++;
+        token = strtok(NULL," ");
+    }
+    size = tokencount;
+    matrix = new double*[size];
+
+    rewind(fileptr);
+
+    for (int i = 0; i < size; i++)
+    {
+        matrix[i] = new double[size];
+        for (int j = 0; j < size; j++) {
+            float f;
+            fscanf(fileptr, "%f", &f);
+            matrix[i][j] = f;
+        }
+    }
+    double total = 0.0;
+    for (int i = 0; i < 5; i++)
+        for(int j = 0; j < 5; j++)
+            total += matrix[i][j];
+    printf("%f\n", total);
+    free(lineptr);
+    return tokencount;
 }
 
 void RhoMatrix::read_matrix(const char* data_filename) {
     FILE* fileptr = fopen(data_filename, "r");
-    read_matrix(fileptr)
+    read_matrix(fileptr);
+    fclose(fileptr);
 }
+
+double * RhoMatrix::get_word_row(int word_idx)
+{
+    return matrix[word_idx];
+}
+
+double RhoMatrix::get_word_2_word(int word_idx, int word2_idx)
+{
+    return matrix[word_idx][word2_idx];
+}
+
+
 DocState::DocState() {
   words_ = NULL;
 }

@@ -1,4 +1,4 @@
-#include "utils.h"
+#include "utils.hpp"
 
 extern gsl_rng * RANDOM_NUMBER;
 
