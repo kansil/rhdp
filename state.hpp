@@ -29,26 +29,25 @@ public:
   DocState();
   ~DocState();
 public:
- void setup_state_from_doc(const Document* doc);
+  void setup_state_from_doc(const Document* doc);
 };
 
 
 class RhoMatrix {
 private:
-    int size = -1;
-    double** matrix = NULL;
+  int size = -1;
+  double** matrix = NULL;
 
 public:
-    RhoMatrix();
-    ~RhoMatrix();
-    void read_matrix(const char* data_filename);
-    int read_matrix(FILE* fileptr);
-    void free_rhomatrix();
-    int get_vocab_size();
-    double* get_word_row(int word_idx);
-    double  get_word_2_word(int word_idx, int word2_idx);
-
-
+  RhoMatrix();
+  ~RhoMatrix();
+  void create_unit_matrix(size_t vocab_size); 
+  void read_matrix(const char* data_filename);
+  int read_matrix(FILE* fileptr);
+  void free_rhomatrix();
+  int get_vocab_size();
+  double* get_word_row(int word_idx);
+  double  get_word_2_word(int word_idx, int word2_idx);
 };
 
 class HDPState {
@@ -78,7 +77,12 @@ public:
 };
 
 class SHDPState: public HDPState {
-    void init_hdp_state(double eta, double gamma, double alpha, int size_vocab, RhoMatrix* rho);
+public:
+  void init_hdp_state(double eta, double gamma, double alpha, int size_vocab, RhoMatrix* rho);
+  void init_hdp_state(double eta, double gammma, double alpha, int size_vocab);
+public:
+  RhoMatrix* rho_matrix_;
+  vct_int topic_rho_assignment_;
 };
 
 class HDP {

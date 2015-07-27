@@ -128,6 +128,30 @@ void HDPState::init_hdp_state(double eta, double gamma, double alpha, int size_v
   pi_left_ = 1.0;
 }
 
+void RhoMatrix::create_unit_matrix(size_t vocab_size)
+{
+  free_rhomatrix();
+  matrix = new double*[vocab_size];
+  for (size_t i = 0; i < vocab_size; i++)
+    {
+      matrix[i] = new double[vocab_size];
+      for (size_t j=0; j < vocab_size; j++)
+        matrix[i][j] = 1.0;
+    }
+}
+
+void SHDPState::init_hdp_state(double eta, double gamma, double alpha, int size_vocab)
+{
+  RhoMatrix * new_rho = new RhoMatrix();
+  new_rho->create_unit_matrix(size_vocab);
+  init_hdp_state(eta, gamma, alpha, size_vocab, new_rho);
+}
+
+void SHDPState::init_hdp_state(double eta, double gamma, double alpha, int size_vocab, RhoMatrix* rho_matrix) {
+  HDPState::init_hdp_state(eta,gamma,alpha,size_vocab);
+  rho_matrix_ = rho_matrix;
+}
+
 void HDPState::copy_hdp_state(const HDPState& src_state) {
   eta_ = src_state.eta_;
   gamma_ = src_state.gamma_;
@@ -721,3 +745,5 @@ void HDP::sample_second_level_concentration(double alpha_a, double alpha_b) {
     hdp_state_->alpha_ = rgamma(shape + n - sum_s, 1.0 / rate);
   }
 }
+
+
