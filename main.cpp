@@ -36,8 +36,7 @@ void print_usage_and_exit() {
     printf("      --eta:             the topic Dirichlet parameter, default 0.05.\n");
     printf("      --gamma:           the first-level concentration parameter in hdp, default 1.0.\n");
     printf("      --alpha:           the second-level concentration parameter in hdp, default 1.0.\n");
-    printf("      %c[4m--rhomatrix:       the smoothing matrix, in space delimited format, required  %c[0m\n",0x1B,0x1B );
-
+    printf("      %c[4m--rho_matrix:       the smoothing matrix, in space delimited format.%c[0m Unit matrix will be used if not given\n",0x1B,0x1B );
     printf("      --gamma_a:        shape for 1st-level concentration parameter, default 1.0.\n");
     printf("      --gamma_b:        scale for 1st-level concentration parameter, default 1.0.\n");
     printf("      --alpha_a:        shape for 2nd-level concentration parameter, default 1.0.\n");
@@ -93,7 +92,6 @@ int main(int argc, char* argv[]) {
     else if (!strcmp(argv[i], "--max_iter"))        max_iter = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--max_time"))        max_time = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--save_lag"))        save_lag = atoi(argv[++i]);
-
     else if (!strcmp(argv[i], "--train_data"))      train_data = argv[++i];
     else if (!strcmp(argv[i], "--rho_matrix"))       rhomatrix_fn = argv[++i];
     else if (!strcmp(argv[i], "--eta"))             eta = atof(argv[++i]);
@@ -136,12 +134,6 @@ int main(int argc, char* argv[]) {
           exit(0);
       }
 
-      if (rhomatrix_fn == NULL) {
-          printf("Following information is missing: --rhomatrix\n");
-          printf("Run ./shdp for help.\n");
-          exit(0);
-      }
-
     sprintf(name, "%s/settings.dat", directory);
     printf("Setting saved at %s.\n", name);
     FILE* setting_file = fopen(name, "w");
@@ -169,16 +161,26 @@ int main(int argc, char* argv[]) {
     fclose(setting_file);
 
     Corpus* c_train = NULL;
-    RhoMatrix* rho = NULL;
-
-    printf("Reading rho matrix from %s.\n", rhomatrix_fn);
-    rho = new RhoMatrix();
-    rho->read_matrix(rhomatrix_fn);
 
     printf("Reading training data from %s.\n", train_data);
     // Reading one of the train data.
     c_train = new Corpus();
     c_train->read_data(train_data);
+
+    RhoMatrix* rho = new RhoMatrix();
+    if (rhomatrix_fn == NULL)
+      {
+        printf("Not rho matrix file given. Using unit rho matrix.\n");
+        rho->create_unit_matrix(c_train->size_vocab_);
+      }
+    else
+      {
+        printf("Reading rho matrix from %s.\n", rhomatrix_fn);
+        rho->read_matrix(rhomatrix_fn);
+      }
+    if (!rho->check_rho_matrix(c_train->size_vocab_))
+      exit(0);
+
 
     // Open the log file for training data.
     sprintf(name, "%s/train.log", directory);
@@ -193,7 +195,7 @@ int main(int argc, char* argv[]) {
     int total_time = 0;
     int iter = 0;
 
-    HDP* hdp = new HDP();
+    SHDP* hdp = new SHDP();
     hdp->init_hdp(eta, gamma, alpha, c_train->size_vocab_);
 
     // Setting up the hdp state.
@@ -248,12 +250,12 @@ int main(int argc, char* argv[]) {
     Corpus* c_test = new Corpus();
     c_test->read_data(test_data);
 
-    SHDP* hdp = new SHDP();
+    HDP* hdp = new HDP();
     printf("Loading model from prefix %s...\n", model_prefix);
     hdp->load_state(model_prefix);
 
     // Remember the old state.
-    SHDPState* old_hdp_state = new SHDPState();
+    HDPState* old_hdp_state = new HDPState();
     old_hdp_state->copy_hdp_state(*hdp->hdp_state_);
 
     hdp->setup_doc_states(c_test->docs_);

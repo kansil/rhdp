@@ -35,13 +35,14 @@ public:
 
 class RhoMatrix {
 private:
-  int size = -1;
-  double** matrix = NULL;
+  size_t size;
+  double** matrix;
 
 public:
   RhoMatrix();
   ~RhoMatrix();
-  void create_unit_matrix(size_t vocab_size); 
+  bool check_rho_matrix(size_t vocab_size); 
+  void create_unit_matrix(size_t vocab_size);
   void read_matrix(const char* data_filename);
   int read_matrix(FILE* fileptr);
   void free_rhomatrix();
@@ -78,6 +79,7 @@ public:
 
 class SHDPState: public HDPState {
 public:
+  ~SHDPState();
   void init_hdp_state(double eta, double gamma, double alpha, int size_vocab, RhoMatrix* rho);
   void init_hdp_state(double eta, double gammma, double alpha, int size_vocab);
 public:
@@ -135,6 +137,7 @@ public:
 
 
 class SHDP : public HDP {
-
+public:
+  int  sample_word_assignment(DocState* doc_state, int i, bool remove, vct* p);
 };
 #endif // STATE_H

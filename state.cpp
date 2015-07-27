@@ -1,25 +1,64 @@
 #include <assert.h>
 #include <algorithm>
 #include "state.hpp"
-
+#include <cmath>
 
 RhoMatrix::RhoMatrix() {
-
+  size = 0;
+  matrix = NULL;
 }
-
 RhoMatrix::~RhoMatrix() {
     free_rhomatrix();
 }
 
 void RhoMatrix::free_rhomatrix() {
     if (matrix != NULL) {
-        for (int i = 0; i < size; i++)
+        for (size_t i = 0; i < size; i++)
         {
             delete[] matrix[i];
         }
         delete[] matrix;
     }
     size = 0;
+}
+
+bool RhoMatrix::check_rho_matrix(size_t vocab_size)
+{
+  if (matrix == NULL)
+    {
+      printf("FATAL: No rho matrix created. Cannot proceed!\n");
+      return false;
+    }
+  if (vocab_size != size)
+    {
+      printf("WARNING: Corpus vocabulary size (%lu) and rho matrix size (%lu) do not agree!\n", vocab_size, size);
+      if (vocab_size > size)
+        {
+          printf("FATAL: Corpus vocabulary size is larger! Cannot proceed\n");
+          return false;
+        }
+      else
+        printf("WARNING: I will be using the given rhomatrix anyway! User is responsible for any vocabulary shifting.\n");
+    }
+  for (size_t i = 0; i < size; i++)
+    {
+      double total = 0;
+      for (size_t j = 0; j < size; j++)
+        {
+          if (matrix[i][j] != matrix[j][i])
+            {
+              printf("FATAL: rho matrix is not symmetric (rho[%lu,%lu]=%f  ,rho[%lu][%lu]=%f)\n", i, j, matrix[i][j],j,i,matrix[j][i]);
+              return false;
+            }
+          total += matrix[i][j];
+        }
+      if (std::abs(total - (double)size) > 0.1)
+        {
+          printf("FATAL: rho matrix row %lu does not have an mean of 1.0 (actual: %f)\n", i, total);
+          return false;
+        }
+    }
+  return true;
 }
 
 int RhoMatrix::read_matrix(FILE* fileptr) {
@@ -44,10 +83,10 @@ int RhoMatrix::read_matrix(FILE* fileptr) {
 
     rewind(fileptr);
 
-    for (int i = 0; i < size; i++)
+    for (size_t i = 0; i < size; i++)
     {
         matrix[i] = new double[size];
-        for (int j = 0; j < size; j++) {
+        for (size_t j = 0; j < size; j++) {
             float f;
             fscanf(fileptr, "%f", &f);
             matrix[i][j] = f;
@@ -114,6 +153,11 @@ HDPState::~HDPState() {
   vct_ptr_free(&topic_lambda_);
 }
 
+SHDPState::~SHDPState() {
+  HDPState::~HDPState();
+  rho_matrix_->free_rhomatrix(); 
+  delete rho_matrix_;
+}
 void HDPState::init_hdp_state(double eta, double gamma, double alpha, int size_vocab) {
   eta_ = eta;
   gamma_ = gamma;
@@ -138,6 +182,7 @@ void RhoMatrix::create_unit_matrix(size_t vocab_size)
       for (size_t j=0; j < vocab_size; j++)
         matrix[i][j] = 1.0;
     }
+  size = vocab_size;
 }
 
 void SHDPState::init_hdp_state(double eta, double gamma, double alpha, int size_vocab)
@@ -150,8 +195,10 @@ void SHDPState::init_hdp_state(double eta, double gamma, double alpha, int size_
 void SHDPState::init_hdp_state(double eta, double gamma, double alpha, int size_vocab, RhoMatrix* rho_matrix) {
   HDPState::init_hdp_state(eta,gamma,alpha,size_vocab);
   rho_matrix_ = rho_matrix;
+  topic_rho_assignment_.resize(INIT_SIZE,-1);
 }
 
+//TODO: Override for SHDPState
 void HDPState::copy_hdp_state(const HDPState& src_state) {
   eta_ = src_state.eta_;
   gamma_ = src_state.gamma_;
@@ -174,6 +221,7 @@ void HDPState::copy_hdp_state(const HDPState& src_state) {
   pi_left_ = src_state.pi_left_;
 }
 
+//TODO: Override for SHDPState
 void HDPState::compact_hdp_state(vct_int* k_to_new_k) {
   int old_num_topics = num_topics_;
   k_to_new_k->resize(old_num_topics, -1);
@@ -193,6 +241,8 @@ void HDPState::compact_hdp_state(vct_int* k_to_new_k) {
   num_topics_ = new_k;
 }
 
+
+//TODO: Override for SHDPState
 void HDPState::load_hdp_state(const char* name) {
   char filename[500];
 
@@ -242,7 +292,7 @@ void HDPState::load_hdp_state(const char* name) {
   fscanf(pi_file, "%lf", &pi_left_);
   fclose(pi_file);
 }
-
+//TODO: Override for SHDPState
 void HDPState::save_hdp_state(const char* name) {
   char filename[500];
 
@@ -363,6 +413,7 @@ int HDP::iterate_gibbs_state(bool remove, bool permute) {
   return total_change;
 }
 
+//TODO: Override for SHDPState
 int HDP::sample_word_assignment(DocState* doc_state, int i, bool remove, vct* p) {
   int old_k = -1, k;
   if (remove) {
@@ -427,6 +478,7 @@ int HDP::sample_word_assignment(DocState* doc_state, int i, bool remove, vct* p)
   return int(old_k != k);
 }
 
+//TODO: Override for SHDPState
 void HDP::doc_state_update(DocState* doc_state, int i, int update) {
   int d = doc_state->doc_id_;
   int w = doc_state->words_[i].word_;
@@ -517,6 +569,7 @@ void HDP::sample_table_counts(DocState* doc_state, vct* p) {
   }
 }
 
+//TODO: Override for SHDPState
 void HDP::sample_top_level_proportions() {
   double total = 0;
   for (int k = 0; k < hdp_state_->num_topics_; ++k) {
@@ -571,6 +624,7 @@ void HDP::sample_posterior_sticks() {
 }
 */
 
+//TODO: Override for SHDPState
 void HDP::compact_hdp_state() {
   int old_num_topics = hdp_state_->num_topics_;
   vct_int k_to_new_k;
@@ -612,6 +666,7 @@ void HDP::compact_hdp_state() {
   }
 }
 
+//TODO: Override for SHDPState
 double HDP::log_likelihood(const HDPState* old_hdp_state) {
   double likelihood = 0.0;
 
@@ -667,10 +722,12 @@ double HDP::log_likelihood(const HDPState* old_hdp_state) {
   return likelihood;
 }
 
+//TODO: Override for SHDPState
 void HDP::save_state(const char* name) {
   hdp_state_->save_hdp_state(name);
 }
 
+//TODO: Override for SHDPState
 void HDP::load_state(const char* name) {
   hdp_state_ = new HDPState();
   hdp_state_->load_hdp_state(name);
@@ -681,6 +738,7 @@ void HDP::hyper_inference(double gamma_a, double gamma_b, double alpha_a, double
   sample_second_level_concentration(alpha_a, alpha_b);
 }
 
+//TODO: Override for SHDPState
 void HDP::init_fast_gibbs_sampling_variables() {
   unique_topic_by_word_.resize(hdp_state_->size_vocab_);
   smoothing_prob_.resize(hdp_state_->word_counts_by_topic_.size(), 0);
@@ -746,4 +804,67 @@ void HDP::sample_second_level_concentration(double alpha_a, double alpha_b) {
   }
 }
 
+//TODO: Finish the implementation below (Override of HDP::sample_word_assignment)
+int SHDP::sample_word_assignment(DocState* doc_state, int i, bool remove, vct* p) {
+  int old_k = -1, k;
+  if (remove) {
+    old_k = doc_state->words_[i].topic_assignment_;
+    doc_state_update(doc_state, i, -1);
+  }
 
+  if ((int)p->size() < hdp_state_->num_topics_ + 1) {
+    p->resize(2 * hdp_state_->num_topics_ + 1);
+  }
+
+  int d = doc_state->doc_id_;
+  int w = doc_state->words_[i].word_;
+
+  double p_w = 0.0;
+  set<int>::iterator it = unique_topic_by_word_[w].begin();
+  int j = 0;
+  for (; it != unique_topic_by_word_[w].end(); ++it, ++j) {
+    k = *it;
+    p->at(j) = hdp_state_->topic_lambda_[k][w] * (smoothing_prob_[k] + doc_prob_[k][d]);
+    p_w += p->at(j);
+    p->at(j) = p_w;
+  }
+  double tail_prob = hdp_state_->alpha_ * hdp_state_->pi_left_ / hdp_state_->size_vocab_;
+  double total_p = p_w + (doc_prob_sum_[d] + smoothing_prob_sum_) * hdp_state_->eta_ + tail_prob;
+  double u = runiform() * total_p;
+  if (u < p_w) { // in the word region.
+    it = unique_topic_by_word_[w].begin();
+    for (j = 0; it != unique_topic_by_word_[w].end(); ++it, ++j) {
+      if (u < p->at(j)) {
+        k = *it;
+        break;
+      }
+    }
+  } else {
+    u = u - p_w;
+    if (u < tail_prob) { // in the tail region.
+      k = hdp_state_->num_topics_;
+    } else {
+      u = (u - tail_prob) / hdp_state_->eta_;
+      if (u < doc_prob_sum_[d]) { // In the doc region,
+        it = unique_topic_by_doc_[d].begin();
+        total_p = 0.0;
+        for (; it != unique_topic_by_doc_[d].end(); ++it) {
+          k = *it;
+          total_p += doc_prob_[k][d];
+          if (u < total_p) break;
+        }
+      } else { // In the smoothing region.
+        u = u - doc_prob_sum_[d];
+        total_p = 0.0;
+        for (k = 0; k < hdp_state_->num_topics_; ++k) {
+          total_p += smoothing_prob_[k];
+          if (u < total_p) break;
+        }
+      }
+    }
+  }
+
+  doc_state->words_[i].topic_assignment_ = k;
+  doc_state_update(doc_state, i, 1);
+  return int(old_k != k);
+}

@@ -2,7 +2,7 @@
 
 extern gsl_rng * RANDOM_NUMBER;
 
-const double half_ln_2pi = 0.91893853320467267;
+//const double half_ln_2pi = 0.91893853320467267;
 
 /*
  * compare two ints
