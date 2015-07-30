@@ -3,15 +3,29 @@
 #include "state.hpp"
 #include <cmath>
 
-RhoMatrix::RhoMatrix() {
-  size = 0;
-  matrix = NULL;
-}
-RhoMatrix::~RhoMatrix() {
-    free_rhomatrix();
+RhoMatrix::RhoMatrix(size_t vocab_size) {
+  free_and_reset();
+  make_unit_matrix(vocab_size);
 }
 
-void RhoMatrix::free_rhomatrix() {
+
+RhoMatrix::RhoMatrix(const char* filename)
+{
+  free_and_reset();
+  read_from_file(filename);
+}
+
+RhoMatrix::RhoMatrix(FILE* fileptr)
+{
+  free_and_reset();
+  read_from_file(fileptr);
+}
+
+RhoMatrix::~RhoMatrix() {
+    free_and_reset();
+}
+
+void RhoMatrix::free_and_reset() {
     if (matrix != NULL) {
         for (size_t i = 0; i < size; i++)
         {
@@ -19,19 +33,37 @@ void RhoMatrix::free_rhomatrix() {
         }
         delete[] matrix;
     }
+
+    if (cache_row != NULL) {
+      delete[] cache_row;
+    }
+    cache_row = NULL;
+    matrix = NULL;
     size = 0;
+    is_unit_matrix = false;
 }
 
-bool RhoMatrix::check_rho_matrix(size_t vocab_size)
+void RhoMatrix::make_unit_matrix(size_t vocab_size)
 {
-  if (matrix == NULL)
-    {
-      printf("FATAL: No rho matrix created. Cannot proceed!\n");
-      return false;
-    }
+  cache_row = new double[vocab_size];
+  for (size_t i = 0; i > vocab_size; i++)
+    cache_row[i] = 0.0;
+  is_unit_matrix = true;
+  size = vocab_size;
+}
+
+bool RhoMatrix::isUnitMatrix()
+{
+  return is_unit_matrix;
+}
+
+bool RhoMatrix::check(size_t vocab_size)
+{
   if (vocab_size != size)
     {
-      printf("WARNING: Corpus vocabulary size (%lu) and rho matrix size (%lu) do not agree!\n", vocab_size, size);
+      printf("WARNING: Corpus vocabulary size (%lu) and rho matrix size (%lu) do not agree!\n",
+             vocab_size, size);
+
       if (vocab_size > size)
         {
           printf("FATAL: Corpus vocabulary size is larger! Cannot proceed\n");
@@ -40,29 +72,33 @@ bool RhoMatrix::check_rho_matrix(size_t vocab_size)
       else
         printf("WARNING: I will be using the given rhomatrix anyway! User is responsible for any vocabulary shifting.\n");
     }
-  for (size_t i = 0; i < size; i++)
+  if (!is_unit_matrix)
     {
-      double total = 0;
-      for (size_t j = 0; j < size; j++)
+      for (size_t i = 0; i < size; i++)
         {
-          if (matrix[i][j] != matrix[j][i])
+          double total = 0;
+          for (size_t j = 0; j < size; j++)
             {
-              printf("FATAL: rho matrix is not symmetric (rho[%lu,%lu]=%f  ,rho[%lu][%lu]=%f)\n", i, j, matrix[i][j],j,i,matrix[j][i]);
+              if (matrix[i][j] != matrix[j][i])
+                {
+                  printf("FATAL: rho matrix is not symmetric (rho[%lu,%lu]=%f  ,rho[%lu][%lu]=%f)\n",
+                         i, j, matrix[i][j],j,i,matrix[j][i]);
+                  return false;
+                }
+              total += matrix[i][j];
+            }
+          if (std::abs(total - (double)size) > 0.1)
+            {
+              printf("FATAL: rho matrix row %lu does not have an mean of 1.0 (actual: %f)\n",
+                     i, total);
               return false;
             }
-          total += matrix[i][j];
-        }
-      if (std::abs(total - (double)size) > 0.1)
-        {
-          printf("FATAL: rho matrix row %lu does not have an mean of 1.0 (actual: %f)\n", i, total);
-          return false;
         }
     }
   return true;
 }
 
-int RhoMatrix::read_matrix(FILE* fileptr) {
-    free_rhomatrix();
+int RhoMatrix::read_from_file(FILE* fileptr) {
     char* lineptr = NULL;
     size_t linesize = 0;
 
@@ -80,44 +116,87 @@ int RhoMatrix::read_matrix(FILE* fileptr) {
     }
     size = tokencount;
     matrix = new double*[size];
-
+    
     rewind(fileptr);
-
+    
     for (size_t i = 0; i < size; i++)
     {
-        matrix[i] = new double[size];
-        for (size_t j = 0; j < size; j++) {
-            float f;
-            fscanf(fileptr, "%f", &f);
-            matrix[i][j] = f;
+      if (i % (size/100) == 0)
+        {
+          printf(".");
+          fflush(stdout);
         }
+
+      matrix[i] = new double[size];
+      for (size_t j = 0; j < size; j++) {
+        float f;
+        fscanf(fileptr, "%f", &f);
+        matrix[i][j] = f;
+      }
     }
-    double total = 0.0;
-    for (int i = 0; i < 5; i++)
-        for(int j = 0; j < 5; j++)
-            total += matrix[i][j];
-    printf("%f\n", total);
+
+    printf("Done/n");
     free(lineptr);
     return tokencount;
 }
 
-void RhoMatrix::read_matrix(const char* data_filename) {
-    FILE* fileptr = fopen(data_filename, "r");
-    read_matrix(fileptr);
+void RhoMatrix::read_from_file(const char* filename) {
+    FILE* fileptr = fopen(filename, "r");
+    printf("Reading %s: ", filename);
+    read_from_file(fileptr);
     fclose(fileptr);
 }
 
-double * RhoMatrix::get_word_row(int word_idx)
+int RhoMatrix::write_to_file(FILE* fileptr)
 {
+  if (matrix == NULL || is_unit_matrix)
+    return -1;
+  int num_lines = 0;
+  for(size_t i = 0; i < size; i++)
+    {
+      for (size_t j = 0; j < size; j++)
+        {
+          fprintf(fileptr,"%f", matrix[i][j]);
+          if (j != size-1)
+            fprintf(fileptr," ");
+        }
+      num_lines++;
+      if (i != size-1)
+        fprintf(fileptr,"\n");
+    }
+  return num_lines;
+}
+
+
+void RhoMatrix::write_to_file(const char* filename) {
+  if (is_unit_matrix)
+    return;
+  FILE* fileptr = fopen(filename, "w");
+  write_to_file(fileptr);
+  fclose(fileptr);
+}
+
+
+double * RhoMatrix::get_row(size_t word_idx)
+{
+  if (is_unit_matrix)
+    return cache_row;
+
+  if (word_idx < size)
     return matrix[word_idx];
+  else
+    return NULL;
 }
 
-double RhoMatrix::get_word_2_word(int word_idx, int word2_idx)
+double RhoMatrix::get_element(size_t row_idx, size_t col_idx)
 {
-    return matrix[word_idx][word2_idx];
+  if (row_idx < size && col_idx < size)
+    return matrix[row_idx][col_idx];
+  else
+    return NAN;
 }
 
-
+// -------- DocState -------
 DocState::DocState() {
   words_ = NULL;
 }
@@ -146,6 +225,8 @@ void DocState::setup_state_from_doc(const Document* doc) {
   }
 }
 
+//---------- HDPState ---------
+
 HDPState::HDPState() {
 }
 
@@ -153,16 +234,26 @@ HDPState::~HDPState() {
   vct_ptr_free(&topic_lambda_);
 }
 
-SHDPState::~SHDPState() {
-  HDPState::~HDPState();
-  rho_matrix_->free_rhomatrix(); 
-  delete rho_matrix_;
-}
-void HDPState::init_hdp_state(double eta, double gamma, double alpha, int size_vocab) {
+void HDPState::init_hdp_state(double eta, double gamma, double alpha, int size_vocab, const char* rho_matrix_fname) {
   eta_ = eta;
   gamma_ = gamma;
   alpha_ = alpha;
   size_vocab_ = size_vocab;
+
+  if (rho_matrix_fname != NULL)
+    {
+      rho_matrix_ = new RhoMatrix(rho_matrix_fname);
+      rho_matrix_filename = new char[strlen(rho_matrix_fname)+2];
+      strcpy(rho_matrix_filename,rho_matrix_fname);
+    }
+     else
+    {
+      rho_matrix_filename = NULL;
+      rho_matrix_ = new RhoMatrix(size_vocab_);
+    }
+
+  if (!rho_matrix_->check(size_vocab_))
+    exit(0);
 
   num_topics_ = 0;
   vct_ptr_resize(&topic_lambda_, INIT_SIZE, size_vocab_);
@@ -170,40 +261,23 @@ void HDPState::init_hdp_state(double eta, double gamma, double alpha, int size_v
   beta_u_.resize(INIT_SIZE, 0);
   pi_.resize(INIT_SIZE, 0.0);
   pi_left_ = 1.0;
+  
+  topic_rho_assignments_.resize(INIT_SIZE,-1);
 }
 
-void RhoMatrix::create_unit_matrix(size_t vocab_size)
-{
-  free_rhomatrix();
-  matrix = new double*[vocab_size];
-  for (size_t i = 0; i < vocab_size; i++)
-    {
-      matrix[i] = new double[vocab_size];
-      for (size_t j=0; j < vocab_size; j++)
-        matrix[i][j] = 1.0;
-    }
-  size = vocab_size;
-}
 
-void SHDPState::init_hdp_state(double eta, double gamma, double alpha, int size_vocab)
-{
-  RhoMatrix * new_rho = new RhoMatrix();
-  new_rho->create_unit_matrix(size_vocab);
-  init_hdp_state(eta, gamma, alpha, size_vocab, new_rho);
-}
-
-void SHDPState::init_hdp_state(double eta, double gamma, double alpha, int size_vocab, RhoMatrix* rho_matrix) {
-  HDPState::init_hdp_state(eta,gamma,alpha,size_vocab);
-  rho_matrix_ = rho_matrix;
-  topic_rho_assignment_.resize(INIT_SIZE,-1);
-}
-
-//TODO: Override for SHDPState
 void HDPState::copy_hdp_state(const HDPState& src_state) {
   eta_ = src_state.eta_;
   gamma_ = src_state.gamma_;
   alpha_ = src_state.alpha_;
   size_vocab_ = src_state.size_vocab_;
+  rho_matrix_ = src_state.rho_matrix_;
+
+  if (src_state.rho_matrix_filename != NULL)
+    {
+      rho_matrix_filename = new char[strlen(src_state.rho_matrix_filename)+2];
+      strcpy(rho_matrix_filename, src_state.rho_matrix_filename);
+    }
 
   num_topics_ = src_state.num_topics_;
 
@@ -214,6 +288,7 @@ void HDPState::copy_hdp_state(const HDPState& src_state) {
     memcpy(topic_lambda_[i], src_state.topic_lambda_[i], size_vocab_ * sizeof(int));
   }
 
+  topic_rho_assignments_ = src_state.topic_rho_assignments_;
   word_counts_by_topic_ = src_state.word_counts_by_topic_;
   beta_u_ = src_state.beta_u_;
   //beta_v_ = src_state.beta_v_;
@@ -221,7 +296,6 @@ void HDPState::copy_hdp_state(const HDPState& src_state) {
   pi_left_ = src_state.pi_left_;
 }
 
-//TODO: Override for SHDPState
 void HDPState::compact_hdp_state(vct_int* k_to_new_k) {
   int old_num_topics = num_topics_;
   k_to_new_k->resize(old_num_topics, -1);
@@ -230,6 +304,7 @@ void HDPState::compact_hdp_state(vct_int* k_to_new_k) {
     if (word_counts_by_topic_[k] > 0) {
       k_to_new_k->at(k) = new_k;
       if (k != new_k) {
+        vct_swap_elements(&topic_rho_assignments_, new_k, k);
         vct_swap_elements(&word_counts_by_topic_, new_k, k);
         vct_swap_elements(&beta_u_, new_k, k);
         vct_swap_elements(&topic_lambda_, new_k, k);
@@ -242,7 +317,6 @@ void HDPState::compact_hdp_state(vct_int* k_to_new_k) {
 }
 
 
-//TODO: Override for SHDPState
 void HDPState::load_hdp_state(const char* name) {
   char filename[500];
 
@@ -253,7 +327,21 @@ void HDPState::load_hdp_state(const char* name) {
   fscanf(info_file, "alpha: %lf\n", &alpha_);
   fscanf(info_file, "size_vocab: %d\n", &size_vocab_);
   fscanf(info_file, "num_topics: %d\n", &num_topics_);
+  fscanf(info_file, "rho_matrix: %s\n", (char*) &filename);
   fclose(info_file);
+
+  if (strcmp(filename,"None") != 0) {
+    rho_matrix_ = new RhoMatrix(filename);
+    rho_matrix_filename = NULL;
+  }
+  else {
+    rho_matrix_ = new RhoMatrix(size_vocab_);
+    rho_matrix_filename = new char[strlen(filename) + 3];
+    strcpy(rho_matrix_filename, filename);
+  }
+
+  if (!rho_matrix_->check(size_vocab_))
+    exit(0);
 
   word_counts_by_topic_.resize(num_topics_ + INIT_SIZE, 0.0);
   sprintf(filename, "%s.counts", name);
@@ -262,6 +350,15 @@ void HDPState::load_hdp_state(const char* name) {
     fscanf(topic_count_file, "%d", &word_counts_by_topic_[k]);
   }
   fclose(topic_count_file);
+
+
+  topic_rho_assignments_.resize(num_topics_ + INIT_SIZE, -1);
+  sprintf(filename, "%s.rho", name);
+  FILE* topic_rho_file = fopen(filename, "r");
+  for (int k = 0; k < num_topics_; ++k) {
+    fscanf(topic_rho_file, "%d", &topic_rho_assignments_[k]);
+  }
+  fclose(topic_rho_file);
 
   vct_ptr_resize(&topic_lambda_, num_topics_ + INIT_SIZE, size_vocab_);
   sprintf(filename, "%s.topics", name);
@@ -292,7 +389,7 @@ void HDPState::load_hdp_state(const char* name) {
   fscanf(pi_file, "%lf", &pi_left_);
   fclose(pi_file);
 }
-//TODO: Override for SHDPState
+
 void HDPState::save_hdp_state(const char* name) {
   char filename[500];
 
@@ -303,6 +400,15 @@ void HDPState::save_hdp_state(const char* name) {
   fprintf(info_file, "alpha: %lf\n", alpha_);
   fprintf(info_file, "size_vocab: %d\n", size_vocab_);
   fprintf(info_file, "num_topics: %d\n", num_topics_);
+
+  if (rho_matrix_->isUnitMatrix())
+    {
+      fprintf(info_file, "rho_matrix: %s\n", "None");
+    }
+  else {
+    fprintf(info_file, "rho_matrix: %s\n", rho_matrix_filename);
+  }
+
   fclose(info_file);
 
   sprintf(filename, "%s.counts", name);
@@ -311,6 +417,13 @@ void HDPState::save_hdp_state(const char* name) {
     fprintf(topic_count_file, "%d\n", word_counts_by_topic_[k]);
   }
   fclose(topic_count_file);
+
+  sprintf(filename, "%s.rho", name);
+  FILE* topic_rho_file = fopen(filename, "w");
+  for (int k = 0; k < num_topics_; ++k) {
+    fprintf(topic_rho_file, "%d\n", topic_rho_assignments_[k]);
+  }
+  fclose(topic_rho_file);
 
   sprintf(filename, "%s.topics", name);
   FILE* topic_file = fopen(filename, "w");
@@ -368,10 +481,11 @@ void HDP::remove_doc_states() {
   unique_topic_by_doc_.clear();
 }
 
-void HDP::init_hdp(double eta, double gamma, double alpha, int size_vocab) {
+void HDP::init_hdp(double eta, double gamma, double alpha, int size_vocab, const char* rho_matrix_fname) {
   hdp_state_ = new HDPState();
-  hdp_state_->init_hdp_state(eta, gamma, alpha, size_vocab);
+  hdp_state_->init_hdp_state(eta, gamma, alpha, size_vocab, rho_matrix_fname);
 }
+
 
 void HDP::setup_doc_states(const vector<Document* >& docs) {
   remove_doc_states();
@@ -722,12 +836,10 @@ double HDP::log_likelihood(const HDPState* old_hdp_state) {
   return likelihood;
 }
 
-//TODO: Override for SHDPState
 void HDP::save_state(const char* name) {
   hdp_state_->save_hdp_state(name);
 }
 
-//TODO: Override for SHDPState
 void HDP::load_state(const char* name) {
   hdp_state_ = new HDPState();
   hdp_state_->load_hdp_state(name);
@@ -738,7 +850,6 @@ void HDP::hyper_inference(double gamma_a, double gamma_b, double alpha_a, double
   sample_second_level_concentration(alpha_a, alpha_b);
 }
 
-//TODO: Override for SHDPState
 void HDP::init_fast_gibbs_sampling_variables() {
   unique_topic_by_word_.resize(hdp_state_->size_vocab_);
   smoothing_prob_.resize(hdp_state_->word_counts_by_topic_.size(), 0);
@@ -804,67 +915,3 @@ void HDP::sample_second_level_concentration(double alpha_a, double alpha_b) {
   }
 }
 
-//TODO: Finish the implementation below (Override of HDP::sample_word_assignment)
-int SHDP::sample_word_assignment(DocState* doc_state, int i, bool remove, vct* p) {
-  int old_k = -1, k;
-  if (remove) {
-    old_k = doc_state->words_[i].topic_assignment_;
-    doc_state_update(doc_state, i, -1);
-  }
-
-  if ((int)p->size() < hdp_state_->num_topics_ + 1) {
-    p->resize(2 * hdp_state_->num_topics_ + 1);
-  }
-
-  int d = doc_state->doc_id_;
-  int w = doc_state->words_[i].word_;
-
-  double p_w = 0.0;
-  set<int>::iterator it = unique_topic_by_word_[w].begin();
-  int j = 0;
-  for (; it != unique_topic_by_word_[w].end(); ++it, ++j) {
-    k = *it;
-    p->at(j) = hdp_state_->topic_lambda_[k][w] * (smoothing_prob_[k] + doc_prob_[k][d]);
-    p_w += p->at(j);
-    p->at(j) = p_w;
-  }
-  double tail_prob = hdp_state_->alpha_ * hdp_state_->pi_left_ / hdp_state_->size_vocab_;
-  double total_p = p_w + (doc_prob_sum_[d] + smoothing_prob_sum_) * hdp_state_->eta_ + tail_prob;
-  double u = runiform() * total_p;
-  if (u < p_w) { // in the word region.
-    it = unique_topic_by_word_[w].begin();
-    for (j = 0; it != unique_topic_by_word_[w].end(); ++it, ++j) {
-      if (u < p->at(j)) {
-        k = *it;
-        break;
-      }
-    }
-  } else {
-    u = u - p_w;
-    if (u < tail_prob) { // in the tail region.
-      k = hdp_state_->num_topics_;
-    } else {
-      u = (u - tail_prob) / hdp_state_->eta_;
-      if (u < doc_prob_sum_[d]) { // In the doc region,
-        it = unique_topic_by_doc_[d].begin();
-        total_p = 0.0;
-        for (; it != unique_topic_by_doc_[d].end(); ++it) {
-          k = *it;
-          total_p += doc_prob_[k][d];
-          if (u < total_p) break;
-        }
-      } else { // In the smoothing region.
-        u = u - doc_prob_sum_[d];
-        total_p = 0.0;
-        for (k = 0; k < hdp_state_->num_topics_; ++k) {
-          total_p += smoothing_prob_[k];
-          if (u < total_p) break;
-        }
-      }
-    }
-  }
-
-  doc_state->words_[i].topic_assignment_ = k;
-  doc_state_update(doc_state, i, 1);
-  return int(old_k != k);
-}

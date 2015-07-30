@@ -20,6 +20,7 @@ public:
   int topic_assignment_;
 };
 
+
 class DocState {
 public:
   int doc_id_;
@@ -32,30 +33,39 @@ public:
   void setup_state_from_doc(const Document* doc);
 };
 
-
+//RhoMatrix is designed to be read-only and thus immutable.
+//You can pass around pointers to it without fear!
 class RhoMatrix {
 private:
   size_t size;
   double** matrix;
+  bool is_unit_matrix;
+  double* cache_row;
 
 public:
-  RhoMatrix();
+  RhoMatrix(size_t vocab_size);
+  RhoMatrix(const char* filename);
+  RhoMatrix(FILE* fileptr);
   ~RhoMatrix();
-  bool check_rho_matrix(size_t vocab_size); 
-  void create_unit_matrix(size_t vocab_size);
-  void read_matrix(const char* data_filename);
-  int read_matrix(FILE* fileptr);
-  void free_rhomatrix();
+  bool check(size_t vocab_size); 
+  bool isUnitMatrix();
   int get_vocab_size();
-  double* get_word_row(int word_idx);
-  double  get_word_2_word(int word_idx, int word2_idx);
+  int write_to_file(FILE* fileptr);
+  void write_to_file(const char* filename);
+  double  get_element(size_t row_idx, size_t col_idx);
+  double* get_row(size_t word_idx);
+private:
+  void make_unit_matrix(size_t vocab_size);
+  void read_from_file(const char* filename);
+  int read_from_file(FILE* fileptr);
+  void free_and_reset();
 };
 
 class HDPState {
 public:
   HDPState();
   ~HDPState();
-  void init_hdp_state(double eta, double gamma, double alpha, int size_vocab);
+  void init_hdp_state(double eta, double gamma, double alpha, int size_vocab, const char* rho_matrix_fn);
   void copy_hdp_state(const HDPState& src_state);
   void compact_hdp_state(vct_int* k_to_new_k);
   void save_hdp_state(const char* name);
@@ -67,6 +77,9 @@ public:
   //vct beta_v_; // Not counting the piror gamma
   vct pi_;     // A sample of pi.
   double pi_left_;
+  RhoMatrix* rho_matrix_;
+  char* rho_matrix_filename;
+  vct_int topic_rho_assignments_;
 
   // Hyper parameters
   double eta_;
@@ -75,16 +88,6 @@ public:
 
   int num_topics_;
   int size_vocab_;
-};
-
-class SHDPState: public HDPState {
-public:
-  ~SHDPState();
-  void init_hdp_state(double eta, double gamma, double alpha, int size_vocab, RhoMatrix* rho);
-  void init_hdp_state(double eta, double gammma, double alpha, int size_vocab);
-public:
-  RhoMatrix* rho_matrix_;
-  vct_int topic_rho_assignment_;
 };
 
 class HDP {
@@ -112,7 +115,7 @@ public:
   HDP();
   ~HDP();
 
-  void init_hdp(double eta, double gamma, double alpha, int size_vocab);
+  void init_hdp(double eta, double gamma, double alpha, int size_vocab, const char* rho_matrix_fn);
   void setup_doc_states(const vector<Document* >& docs);
   void remove_doc_states();
 
@@ -136,8 +139,6 @@ public:
 };
 
 
-class SHDP : public HDP {
-public:
-  int  sample_word_assignment(DocState* doc_state, int i, bool remove, vct* p);
-};
+
+
 #endif // STATE_H

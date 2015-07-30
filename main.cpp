@@ -25,7 +25,7 @@ void print_usage_and_exit() {
     printf("      --random_seed:     the random seed, default from the current time.\n");
     printf("      --max_iter:        the max number of iterations, default 100 (-1 means infinite).\n");
     printf("      --max_time:        the max time allowed (in seconds), default 1800 (-1 means infinite).\n");
-    printf("      --save_lag:        the saving point, default 5.\n");
+    printf("      --, Rrrhosave_lag:        the saving point, default 5.\n");
     printf("\n");
 
     printf("      data parameters:\n");
@@ -167,20 +167,18 @@ int main(int argc, char* argv[]) {
     c_train = new Corpus();
     c_train->read_data(train_data);
 
-    RhoMatrix* rho = new RhoMatrix();
     if (rhomatrix_fn == NULL)
       {
         printf("Not rho matrix file given. Using unit rho matrix.\n");
-        rho->create_unit_matrix(c_train->size_vocab_);
+        //    rho->create_unit_matrix(c_train->size_vocab_);
       }
     else
       {
         printf("Reading rho matrix from %s.\n", rhomatrix_fn);
-        rho->read_matrix(rhomatrix_fn);
+        //rho->read_from_file(rhomatrix_fn);
       }
-    if (!rho->check_rho_matrix(c_train->size_vocab_))
-      exit(0);
-
+    //if (!rho->check(c_train->size_vocab_))
+    //exit(0);
 
     // Open the log file for training data.
     sprintf(name, "%s/train.log", directory);
@@ -195,8 +193,8 @@ int main(int argc, char* argv[]) {
     int total_time = 0;
     int iter = 0;
 
-    SHDP* hdp = new SHDP();
-    hdp->init_hdp(eta, gamma, alpha, c_train->size_vocab_);
+    HDP* hdp = new HDP();
+    hdp->init_hdp(eta, gamma, alpha, c_train->size_vocab_, rhomatrix_fn);
 
     // Setting up the hdp state.
     hdp->setup_doc_states(c_train->docs_);
@@ -250,10 +248,23 @@ int main(int argc, char* argv[]) {
     Corpus* c_test = new Corpus();
     c_test->read_data(test_data);
 
+    if (rhomatrix_fn == NULL)
+      {
+        printf("Not rho matrix file given. Using unit rho matrix.\n");
+        //rho->create_unit_matrix(c_test->size_vocab_);
+      }
+    else
+      {
+        printf("Reading rho matrix from %s.\n", rhomatrix_fn);
+        //rho->read_from_file(rhomatrix_fn);
+      }
+    //if (!rho->check(c_test->size_vocab_))
+    //exit(0);
+
     HDP* hdp = new HDP();
     printf("Loading model from prefix %s...\n", model_prefix);
     hdp->load_state(model_prefix);
-
+    
     // Remember the old state.
     HDPState* old_hdp_state = new HDPState();
     old_hdp_state->copy_hdp_state(*hdp->hdp_state_);
@@ -304,6 +315,7 @@ int main(int argc, char* argv[]) {
     delete old_hdp_state;
     delete c_test;
   }
+
 
   // Free random number generator.
   free_random_number_generator(RANDOM_NUMBER);
