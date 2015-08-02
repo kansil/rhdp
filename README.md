@@ -1,4 +1,4 @@
-# Kernel Smoothed Hierarchical Dirichlet Process (with Split-Merge Operations)
+# Kernel Smoothed Hierarchical Dirichlet Process 
 
 **********************************************************************
 
