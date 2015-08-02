@@ -1,4 +1,4 @@
-CC = g++ -O2 -ffast-math -DHAVE_INLINE -DGSL_RANGE_CHECK_OFF -Wall
+CC = g++ -O2 -DHAVE_INLINE=1 -DGSL_RANGE_CHECK=0 -Wall
 #CC = g++ -ansi -Wall -pedantic
 #CFLAGS = -g -Wall -O3 -ffast-math -DHAVE_INLINE -DGSL_RANGE_CHECK_OFF
 # CFLAGS = -g -Wall
