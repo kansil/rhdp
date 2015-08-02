@@ -4,20 +4,20 @@
 #include <cmath>
 
 RhoMatrix::RhoMatrix(size_t vocab_size) {
-  free_and_reset();
+  //  free_and_reset();
   make_unit_matrix(vocab_size);
 }
 
 
 RhoMatrix::RhoMatrix(const char* filename)
 {
-  free_and_reset();
+  //free_and_reset();
   read_from_file(filename);
 }
 
 RhoMatrix::RhoMatrix(FILE* fileptr)
 {
-  free_and_reset();
+  //free_and_reset();
   read_from_file(fileptr);
 }
 
