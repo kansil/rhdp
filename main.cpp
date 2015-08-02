@@ -26,7 +26,7 @@ void print_usage_and_exit() {
     printf("      --random_seed:     the random seed, default from the current time.\n");
     printf("      --max_iter:        the max number of iterations, default 100 (-1 means infinite).\n");
     printf("      --max_time:        the max time allowed (in seconds), default 1800 (-1 means infinite).\n");
-    printf("      --burn_in:        number of burn-in iterations, default 50.\n");
+    printf("      --burn_in:         number of burn-in iterations, default 50.\n");
     printf("      --max_time:        the max time allowed (in seconds), default 1800 (-1 means infinite).\n");
     printf("\n");
 
@@ -38,12 +38,12 @@ void print_usage_and_exit() {
     printf("      --eta:             the topic Dirichlet parameter, default 0.05.\n");
     printf("      --gamma:           the first-level concentration parameter in hdp, default 1.0.\n");
     printf("      --alpha:           the second-level concentration parameter in hdp, default 1.0.\n");
-    printf("      %c[4m--rho_matrix:       the smoothing matrix, in space delimited format.%c[0m Unit matrix will be used if not given\n",0x1B,0x1B );
-    printf("      --gamma_a:        shape for 1st-level concentration parameter, default 1.0.\n");
-    printf("      --gamma_b:        scale for 1st-level concentration parameter, default 1.0.\n");
-    printf("      --alpha_a:        shape for 2nd-level concentration parameter, default 1.0.\n");
-    printf("      --alpha_b:        scale for 2nd-level concentration parameter, default 1.0.\n");
-    printf("      --sample_hyper:   sample 1st and 2nd-level concentration parameter, default false\n");
+    printf("      %c[4m--rho_matrix:      the smoothing matrix, in space delimited format. %c[0m\n\t\t\t\tA matrix of ones will be used if not given\n",0x1B,0x1B );
+    printf("      --gamma_a:         shape for 1st-level concentration parameter, default 1.0.\n");
+    printf("      --gamma_b:         scale for 1st-level concentration parameter, default 1.0.\n");
+    printf("      --alpha_a:         shape for 2nd-level concentration parameter, default 1.0.\n");
+    printf("      --alpha_b:         scale for 2nd-level concentration parameter, default 1.0.\n");
+    printf("      --sample_hyper:    sample 1st and 2nd-level concentration parameter, default false\n");
     printf("\n");
 
     printf("      test only parameters:\n");
