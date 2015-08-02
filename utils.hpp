@@ -116,12 +116,12 @@ template <typename T> void vct_ptr_free(vector <T* >* v) {
 /// gsl_wrappers
 double digamma(double x);
 unsigned int rmultinomial(const vct& v, double tot = -1.0);
-double rgamma(double a, double b);
-double rbeta(double a, double b);
-unsigned int rbernoulli(double p);
-double runiform();
-void rshuffle (void* base, size_t n, size_t size);
-unsigned long int runiform_int(unsigned long int n);
+double rgamma(double a, double b, bool alt_rng=false);
+double rbeta(double a, double b, bool alt_rng=false);
+unsigned int rbernoulli(double p, bool alt_rng=false);
+double runiform(bool alt_rng=false);
+void rshuffle (void* base, size_t n, size_t size, bool alt_rng = false);
+unsigned long int runiform_int(unsigned long int n, bool alt_rng=false);
 void choose_k_from_n(int k, int n, int* result, int* src);
 void sample_k_from_n(int k, int n, vct_int* result);
 

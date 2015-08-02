@@ -1,6 +1,7 @@
 #include "utils.hpp"
 
 extern gsl_rng * RANDOM_NUMBER;
+extern gsl_rng * RANDOM_NUMBER_ALT;
 
 //const double half_ln_2pi = 0.91893853320467267;
 
@@ -106,7 +107,6 @@ double log_normalize(vct* x) {
   return log_norm;
 }
 
-
 double vct_normalize(vct* x) {
   double sum = vct_sum(*x);
   if (sum == 0) return 0.0;
@@ -125,16 +125,14 @@ void vct_exp(vct* x) {
   for (size_t i = 0; i < size; ++i) x->at(i) = exp(x->at(i));
 }
 
-
-
 /// gsl_wrappers
 double digamma(double x) {
   return gsl_sf_psi(x);
 }
 
-unsigned int rmultinomial(const vct& v, double tot) {
+unsigned int rmultinomial(const vct& v, double tot, bool alt_rng) {
   if (tot < 0) tot = vct_sum(v); 
-  double u = runiform() * tot;
+  double u = runiform(alt_rng) * tot;
   double cum_sum = 0.0;
   size_t i = 0;
   for (; i < v.size(); ++i) {
@@ -144,38 +142,40 @@ unsigned int rmultinomial(const vct& v, double tot) {
   return i;
 }
 
-double rgamma(double a, double b) {
-  return gsl_ran_gamma_mt(RANDOM_NUMBER, a, b);
+double rgamma(double a, double b, bool alt_rng ) {
+  return gsl_ran_gamma_mt(
+                          alt_rng ? RANDOM_NUMBER_ALT : RANDOM_NUMBER,
+                          a, b);
 }
 
-double rbeta(double a, double b) {
-  return gsl_ran_beta(RANDOM_NUMBER, a, b);
+double rbeta(double a, double b, bool alt_rng) {
+  return gsl_ran_beta(alt_rng ? RANDOM_NUMBER_ALT : RANDOM_NUMBER, a, b);
 }
 
-unsigned int rbernoulli(double p) {
-  return gsl_ran_bernoulli(RANDOM_NUMBER, p);
+unsigned int rbernoulli(double p, bool alt_rng) {
+  return gsl_ran_bernoulli(alt_rng ? RANDOM_NUMBER_ALT : RANDOM_NUMBER, p);
 }
 
-double runiform() {
-  return gsl_rng_uniform_pos(RANDOM_NUMBER);
+double runiform(bool alt_rng) {
+  return gsl_rng_uniform_pos(alt_rng ? RANDOM_NUMBER_ALT : RANDOM_NUMBER);
 }
 
-void rshuffle(void* base, size_t n, size_t size) {
-  gsl_ran_shuffle(RANDOM_NUMBER, base, n, size);
+void rshuffle(void* base, size_t n, size_t size,bool alt_rng) {
+  gsl_ran_shuffle(alt_rng ? RANDOM_NUMBER_ALT : RANDOM_NUMBER, base, n, size);
 }
 
-unsigned long int runiform_int(unsigned long int n) {
-  return gsl_rng_uniform_int(RANDOM_NUMBER, n);
+unsigned long int runiform_int(unsigned long int n, bool alt_rng) {
+  return gsl_rng_uniform_int(alt_rng ? RANDOM_NUMBER_ALT : RANDOM_NUMBER, n);
 }
 
-void choose_k_from_n(int k, int n, int* result, int* src) {
-  gsl_ran_choose(RANDOM_NUMBER, (void *) result,  k, (void *) src, n, sizeof(int));
+void choose_k_from_n(int k, int n, int* result, int* src, bool alt_rng) {
+  gsl_ran_choose(alt_rng ? RANDOM_NUMBER_ALT : RANDOM_NUMBER, (void *) result,  k, (void *) src, n, sizeof(int));
 }
 
-void sample_k_from_n(int k, int n, vct_int* result) {
+void sample_k_from_n(int k, int n, vct_int* result, bool alt_rng) {
   if ((int)result->size() < k) result->resize(k);
   for (int i = 0; i < k; ++i) {
-    result->at(i) = runiform_int(n);
+    result->at(i) = runiform_int(n, alt_rng);
   }
 }
 

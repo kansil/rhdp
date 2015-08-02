@@ -5,6 +5,7 @@
 #include "utils.hpp"
 
 gsl_rng * RANDOM_NUMBER = NULL;
+gsl_rng * RANDOM_NUMBER_ALT = NULL;
 
 void print_usage_and_exit() {
   // print usage information
@@ -25,7 +26,8 @@ void print_usage_and_exit() {
     printf("      --random_seed:     the random seed, default from the current time.\n");
     printf("      --max_iter:        the max number of iterations, default 100 (-1 means infinite).\n");
     printf("      --max_time:        the max time allowed (in seconds), default 1800 (-1 means infinite).\n");
-    printf("      --, Rrrhosave_lag:        the saving point, default 5.\n");
+    printf("      --burn_in:        number of burn-in iterations, default 50.\n");
+    printf("      --max_time:        the max time allowed (in seconds), default 1800 (-1 means infinite).\n");
     printf("\n");
 
     printf("      data parameters:\n");
@@ -64,6 +66,7 @@ int main(int argc, char* argv[]) {
   int    max_iter = 100;
   int    max_time = 1800;
   int    save_lag = 5;
+  int    burn_in = 50;
 
   // Data parameters.
   char* train_data = NULL;
@@ -91,6 +94,7 @@ int main(int argc, char* argv[]) {
     else if (!strcmp(argv[i], "--random_seed"))     random_seed = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--max_iter"))        max_iter = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--max_time"))        max_time = atoi(argv[++i]);
+    else if (!strcmp(argv[i], "--burn_in"))        burn_in = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--save_lag"))        save_lag = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--train_data"))      train_data = argv[++i];
     else if (!strcmp(argv[i], "--rho_matrix"))       rhomatrix_fn = argv[++i];
@@ -125,6 +129,7 @@ int main(int argc, char* argv[]) {
   char name[500];
   // Init random numbe generator.
   RANDOM_NUMBER = new_random_number_generator(random_seed);
+  RANDOM_NUMBER_ALT = new_random_number_generator(random_seed+1);
 
   if (test_data == NULL || model_prefix == NULL) {
 
@@ -168,25 +173,10 @@ int main(int argc, char* argv[]) {
     c_train->read_data(train_data);
 
     if (rhomatrix_fn == NULL)
-      {
         printf("Not rho matrix file given. Using unit rho matrix.\n");
-        //    rho->create_unit_matrix(c_train->size_vocab_);
-      }
     else
-      {
         printf("Reading rho matrix from %s.\n", rhomatrix_fn);
-        //rho->read_from_file(rhomatrix_fn);
-      }
-    //if (!rho->check(c_train->size_vocab_))
-    //exit(0);
 
-    // Open the log file for training data.
-    sprintf(name, "%s/train.log", directory);
-    FILE* train_log = fopen(name, "w");
-    // Heldout columns record the documents that have not seen before.
-    sprintf(name, "time\titer\tnum.topics\tgamma\talpha\t\tword.count\tlikelihood\tavg.likelihood");
-    if(verbose) printf("%s\n", name);
-    fprintf(train_log, "%s\n", name);
 
     // Start iterating.
     time_t start, current;
@@ -201,6 +191,15 @@ int main(int argc, char* argv[]) {
     // first iteration
     hdp->iterate_gibbs_state(false, false);
 
+    // Open the log file for training data.
+    sprintf(name, "%s/train.log", directory);
+    FILE* train_log = fopen(name, "w");
+    // Heldout columns record the documents that have not seen before.
+    sprintf(name, "time\titer\tnum.topics\tgamma\talpha\t\tword.count\tlikelihood\tavg.likelihood");
+    if(verbose) printf("%s\n", name);
+    fprintf(train_log, "%s\n", name);
+
+    double best_likelihood = -INFINITY;
     while ((max_iter == -1 || iter < max_iter) && (max_time == -1 || total_time < max_time)) {
       ++iter;
       time (&start);
@@ -209,6 +208,11 @@ int main(int argc, char* argv[]) {
       hdp->iterate_gibbs_state(true, true);
       // Scoring the documents.
       double likelihood = hdp->log_likelihood(NULL);
+      if (iter > burn_in && best_likelihood < likelihood)
+        {
+          sprintf(name, "%s/best", directory);
+          hdp->save_state(name);
+        }
       hdp->compact_hdp_state();
 
       if (sample_hyper) hdp->hyper_inference(gamma_a, gamma_b, alpha_a, alpha_b);
@@ -319,5 +323,6 @@ int main(int argc, char* argv[]) {
 
   // Free random number generator.
   free_random_number_generator(RANDOM_NUMBER);
+  free_random_number_generator(RANDOM_NUMBER_ALT);
   return 0;
 }

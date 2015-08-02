@@ -52,8 +52,8 @@ public:
   int get_vocab_size();
   int write_to_file(FILE* fileptr);
   void write_to_file(const char* filename);
-  double  get_element(size_t row_idx, size_t col_idx);
-  double* get_row(size_t word_idx);
+  inline double  get_element(size_t row_idx, size_t col_idx);
+  inline double* get_row(size_t word_idx);
 private:
   void make_unit_matrix(size_t vocab_size);
   void read_from_file(const char* filename);

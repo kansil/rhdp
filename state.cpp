@@ -177,7 +177,7 @@ void RhoMatrix::write_to_file(const char* filename) {
 }
 
 
-double * RhoMatrix::get_row(size_t word_idx)
+inline double * RhoMatrix::get_row(size_t word_idx)
 {
   if (is_unit_matrix)
     return cache_row;
@@ -188,8 +188,10 @@ double * RhoMatrix::get_row(size_t word_idx)
     return NULL;
 }
 
-double RhoMatrix::get_element(size_t row_idx, size_t col_idx)
+inline double RhoMatrix::get_element(size_t row_idx, size_t col_idx)
 {
+  if (is_unit_matrix)
+    return 1.0;
   if (row_idx < size && col_idx < size)
     return matrix[row_idx][col_idx];
   else
@@ -527,7 +529,6 @@ int HDP::iterate_gibbs_state(bool remove, bool permute) {
   return total_change;
 }
 
-//TODO: Override for SHDPState
 int HDP::sample_word_assignment(DocState* doc_state, int i, bool remove, vct* p) {
   int old_k = -1, k;
   if (remove) {
@@ -567,25 +568,27 @@ int HDP::sample_word_assignment(DocState* doc_state, int i, bool remove, vct* p)
     if (u < tail_prob) { // in the tail region.
       k = hdp_state_->num_topics_;
     } else {
-      u = (u - tail_prob) / hdp_state_->eta_;
-      if (u < doc_prob_sum_[d]) { // In the doc region,
+      u = (u - tail_prob);
+      if (u < (doc_prob_sum_[d] * hdp_state_->eta_)  ) { // In the doc region,
         it = unique_topic_by_doc_[d].begin();
         total_p = 0.0;
         for (; it != unique_topic_by_doc_[d].end(); ++it) {
           k = *it;
-          total_p += doc_prob_[k][d];
+          total_p += doc_prob_[k][d] * hdp_state_->rho_matrix_->get_element(hdp_state_->topic_rho_assignments_[k], w) * hdp_state_->eta_;
           if (u < total_p) break;
         }
       } else { // In the smoothing region.
-        u = u - doc_prob_sum_[d];
+        u = u - (doc_prob_sum_[d] * hdp_state_->eta_);
         total_p = 0.0;
         for (k = 0; k < hdp_state_->num_topics_; ++k) {
-          total_p += smoothing_prob_[k];
+          total_p += smoothing_prob_[k] * hdp_state_->rho_matrix_->get_element(hdp_state_->topic_rho_assignments_[k], w) * hdp_state_->eta_;
           if (u < total_p) break;
         }
       }
     }
   }
+
+  assert( k <= hdp_state_->num_topics_);
 
   doc_state->words_[i].topic_assignment_ = k;
   doc_state_update(doc_state, i, 1);
@@ -628,11 +631,15 @@ void HDP::doc_state_update(DocState* doc_state, int i, int update) {
     double new_stick = rbeta(1.0, hdp_state_->gamma_) * hdp_state_->pi_left_;
     hdp_state_->pi_left_ = hdp_state_->pi_left_ - new_stick;
     hdp_state_->pi_[k] = new_stick;
+    //TODO: The line below simulates multinomial sampling,
+    //maybe add uniform as well (use the alt RNG)
+    hdp_state_->topic_rho_assignments_[k] = w;  
 
     if ((int)hdp_state_->word_counts_by_topic_.size() < hdp_state_->num_topics_ + 1) {
       int new_size = 2 * hdp_state_->num_topics_ + 1;
       vct_ptr_resize(&hdp_state_->topic_lambda_, new_size, hdp_state_->size_vocab_);
       hdp_state_->word_counts_by_topic_.resize(new_size, 0);
+      hdp_state_->topic_rho_assignments_.resize(new_size,-1);
       hdp_state_->beta_u_.resize(new_size, 0);
       //hdp_state_->beta_v_.resize(new_size, 0.0);
       hdp_state_->pi_.resize(new_size, 0.0);
@@ -683,7 +690,6 @@ void HDP::sample_table_counts(DocState* doc_state, vct* p) {
   }
 }
 
-//TODO: Override for SHDPState
 void HDP::sample_top_level_proportions() {
   double total = 0;
   for (int k = 0; k < hdp_state_->num_topics_; ++k) {
@@ -738,7 +744,6 @@ void HDP::sample_posterior_sticks() {
 }
 */
 
-//TODO: Override for SHDPState
 void HDP::compact_hdp_state() {
   int old_num_topics = hdp_state_->num_topics_;
   vct_int k_to_new_k;
@@ -811,15 +816,21 @@ double HDP::log_likelihood(const HDPState* old_hdp_state) {
       likelihood += lgamma(old_hdp_state->word_counts_by_topic_[k] + etaW);
       likelihood -= lgamma(hdp_state_->word_counts_by_topic_[k] + etaW);
       for (int w = 0; w < hdp_state_->size_vocab_; ++w) {
+        double current_eta = hdp_state_->eta_ * //
+          hdp_state_->rho_matrix_->get_element(hdp_state_->topic_rho_assignments_[k],w);
+        if (current_eta > 0)
+          likelihood -= lgamma(current_eta);
+        else
+          likelihood -= 10.5; //~lgamma(10E-6)
         if (hdp_state_->topic_lambda_[k][w] > old_hdp_state->topic_lambda_[k][w]) {
-          likelihood -= lgamma(old_hdp_state->topic_lambda_[k][w] + hdp_state_->eta_);
-          likelihood += lgamma(hdp_state_->topic_lambda_[k][w] + hdp_state_->eta_);
+          likelihood -= lgamma(old_hdp_state->topic_lambda_[k][w] + current_eta);
+          likelihood += lgamma(hdp_state_->topic_lambda_[k][w] + current_eta);
         }
       }
     }
   }
 
-  double lg_eta = lgamma(hdp_state_->eta_);
+  //double lg_eta = lgamma(hdp_state_->eta_);
   double lg_etaW = lgamma(etaW);
   for (int k = old_num_topics; k < hdp_state_->num_topics_; ++k) {
     if (hdp_state_->word_counts_by_topic_[k] > 0) {
@@ -827,8 +838,13 @@ double HDP::log_likelihood(const HDPState* old_hdp_state) {
       likelihood -= lgamma(hdp_state_->word_counts_by_topic_[k] + etaW);
       for (int w = 0; w < hdp_state_->size_vocab_; ++w) {
         if (hdp_state_->topic_lambda_[k][w] > 0) {
-          likelihood -= lg_eta;
-          likelihood += lgamma(hdp_state_->topic_lambda_[k][w] + hdp_state_->eta_);
+          double current_eta = hdp_state_->eta_ * //
+            hdp_state_->rho_matrix_->get_element(hdp_state_->topic_rho_assignments_[k],w);
+          if (current_eta > 0)
+            likelihood -= lgamma(current_eta);
+          else
+            likelihood -= 10.5; //~lgamma(10E-6)
+          likelihood += lgamma(hdp_state_->topic_lambda_[k][w] + current_eta);
         }
       }
     }
