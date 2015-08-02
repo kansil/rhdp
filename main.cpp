@@ -35,7 +35,7 @@ void print_usage_and_exit() {
     printf("\n");
 
     printf("      model parameters:\n");
-    printf("      --eta:             the topic Dirichlet parameter, default 0.05.\n");
+    printf("      --eta:             the topic Dirichlet parameter, default 0.5.\n");
     printf("      --gamma:           the first-level concentration parameter in hdp, default 1.0.\n");
     printf("      --alpha:           the second-level concentration parameter in hdp, default 1.0.\n");
     printf("      %c[4m--rho_matrix:      the smoothing matrix, in space delimited format. %c[0m\n\t\t\t\tA matrix of ones will be used if not given\n",0x1B,0x1B );
@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
   char* rhomatrix_fn = NULL;
 
   // Model parameters.
-  double eta = 0.01;
+  double eta = 0.5;
   double gamma = 1.0;
   double alpha = 1.0;
   double gamma_a = 1.0;
