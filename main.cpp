@@ -212,6 +212,7 @@ int main(int argc, char* argv[]) {
         {
           sprintf(name, "%s/best", directory);
           hdp->save_state(name);
+          hdp->save_doc_states(name);
         }
       hdp->compact_hdp_state();
 
@@ -238,6 +239,7 @@ int main(int argc, char* argv[]) {
 
     sprintf(name, "%s/final", directory);
     hdp->save_state(name);
+    hdp->save_doc_states(name);
 
     // Free training data.
     if (c_train != NULL) {
