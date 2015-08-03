@@ -4,25 +4,32 @@
 #include <cmath>
 
 RhoMatrix::RhoMatrix(size_t vocab_size) {
-  //  free_and_reset();
+  init();
   make_unit_matrix(vocab_size);
 }
 
 
 RhoMatrix::RhoMatrix(const char* filename)
 {
-  //free_and_reset();
+  init(); 
   read_from_file(filename);
 }
 
 RhoMatrix::RhoMatrix(FILE* fileptr)
 {
-  //free_and_reset();
+  init();
   read_from_file(fileptr);
 }
 
 RhoMatrix::~RhoMatrix() {
     free_and_reset();
+}
+
+void RhoMatrix::init() {
+  cache_row = NULL;
+  is_unit_matrix = false;
+  size = 0;
+  matrix = NULL;
 }
 
 void RhoMatrix::free_and_reset() {
@@ -135,7 +142,7 @@ int RhoMatrix::read_from_file(FILE* fileptr) {
       }
     }
 
-    printf("Done/n");
+    printf("Done\n");
     free(lineptr);
     return tokencount;
 }

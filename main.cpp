@@ -26,8 +26,8 @@ void print_usage_and_exit() {
     printf("      --random_seed:     the random seed, default from the current time.\n");
     printf("      --max_iter:        the max number of iterations, default 100 (-1 means infinite).\n");
     printf("      --max_time:        the max time allowed (in seconds), default 1800 (-1 means infinite).\n");
-    printf("      --burn_in:         number of burn-in iterations, default 50.\n");
-    printf("      --max_time:        the max time allowed (in seconds), default 1800 (-1 means infinite).\n");
+    printf("      --burn_in:         number of burn-in iterations, default 50.\n\t\t\t\tSmart iteration and best likelihood will not work during the burn-in period.\n");
+    printf("      --smart_iter:      Will terminate if best likelihood has not improved in smart_iter iterations after burn-in.\n \t\t\t\t(-1 means disabled, smart_iter will override max_iter).\n");
     printf("\n");
 
     printf("      data parameters:\n");
@@ -67,6 +67,7 @@ int main(int argc, char* argv[]) {
   int    max_time = 1800;
   int    save_lag = 5;
   int    burn_in = 50;
+  int    smart_iter = -1;
 
   // Data parameters.
   char* train_data = NULL;
@@ -95,6 +96,7 @@ int main(int argc, char* argv[]) {
     else if (!strcmp(argv[i], "--max_iter"))        max_iter = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--max_time"))        max_time = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--burn_in"))        burn_in = atoi(argv[++i]);
+    else if (!strcmp(argv[i], "--smart_iter"))      smart_iter = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--save_lag"))        save_lag = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--train_data"))      train_data = argv[++i];
     else if (!strcmp(argv[i], "--rho_matrix"))       rhomatrix_fn = argv[++i];
@@ -133,11 +135,14 @@ int main(int argc, char* argv[]) {
 
   if (test_data == NULL || model_prefix == NULL) {
 
-      if (train_data == NULL) {
-          printf("Following information is missing: --train_data\n");
-          printf("Run ./shdp for help.\n");
-          exit(0);
-      }
+    if (train_data == NULL) {
+      printf("Following information is missing: --train_data\n");
+      printf("Run ./shdp for help.\n");
+      exit(0);
+    }
+    
+    if (smart_iter != -1)
+      max_iter = -1;
 
     sprintf(name, "%s/settings.dat", directory);
     printf("Setting saved at %s.\n", name);
@@ -149,6 +154,8 @@ int main(int argc, char* argv[]) {
     fprintf(setting_file, "save_lag: %d\n", save_lag);
     fprintf(setting_file, "max_iter: %d\n", max_iter);
     fprintf(setting_file, "max_time: %d\n", max_time);
+    fprintf(setting_file, "burn_in: %d\n", burn_in);
+    fprintf(setting_file, "smart_iter: %d\n", smart_iter);
 
     fprintf(setting_file, "\nData parameters:\n");
     fprintf(setting_file, "train_data: %s\n", train_data);
@@ -182,7 +189,10 @@ int main(int argc, char* argv[]) {
     time_t start, current;
     int total_time = 0;
     int iter = 0;
-
+    if (smart_iter != -1)
+      {
+        max_iter = burn_in + smart_iter;
+      }
     HDP* hdp = new HDP();
     hdp->init_hdp(eta, gamma, alpha, c_train->size_vocab_, rhomatrix_fn);
 
@@ -195,11 +205,12 @@ int main(int argc, char* argv[]) {
     sprintf(name, "%s/train.log", directory);
     FILE* train_log = fopen(name, "w");
     // Heldout columns record the documents that have not seen before.
-    sprintf(name, "time\titer\tnum.topics\tgamma\talpha\t\tword.count\tlikelihood\tavg.likelihood");
+    sprintf(name, "time\titer\tnum.topics\tgamma\talpha\t\tword.count\tlikelihood\tavg.likelihood\tbest.so.far");
     if(verbose) printf("%s\n", name);
     fprintf(train_log, "%s\n", name);
 
     double best_likelihood = -INFINITY;
+    char best_so_far = ' ';
     while ((max_iter == -1 || iter < max_iter) && (max_time == -1 || total_time < max_time)) {
       ++iter;
       time (&start);
@@ -208,12 +219,6 @@ int main(int argc, char* argv[]) {
       hdp->iterate_gibbs_state(true, true);
       // Scoring the documents.
       double likelihood = hdp->log_likelihood(NULL);
-      if (iter > burn_in && best_likelihood < likelihood)
-        {
-          sprintf(name, "%s/best", directory);
-          hdp->save_state(name);
-          hdp->save_doc_states(name);
-        }
       hdp->compact_hdp_state();
 
       if (sample_hyper) hdp->hyper_inference(gamma_a, gamma_b, alpha_a, alpha_b);
@@ -222,14 +227,29 @@ int main(int argc, char* argv[]) {
       time(&current);
       int elapse = (int) difftime(current, start);
       total_time += elapse;
+      best_so_far = ' ';
+      if (iter > burn_in)
+        {
+          if (best_likelihood < likelihood)
+            {
+              best_likelihood = likelihood; 
+              sprintf(name, "%s/best", directory);
+              hdp->save_state(name);
+              hdp->save_doc_states(name);
+              if (smart_iter != -1 )
+                max_iter = iter + smart_iter;
+              best_so_far = '*';
+            }
+        }
 
-      sprintf(name, "%d\t%d\t%d\t\t%.5f\t%.5f\t\t%d\t\t%.3f\t%.5f",
+      sprintf(name, "%d\t%d\t%d\t\t%.5f\t%.5f\t\t%d\t\t%.3f\t%.5f\t%c",
               total_time, iter, hdp->hdp_state_->num_topics_, hdp->hdp_state_->gamma_,
-              hdp->hdp_state_->alpha_, c_train->num_total_words_, likelihood, likelihood/c_train->num_total_words_);
+              hdp->hdp_state_->alpha_, c_train->num_total_words_, likelihood, likelihood/c_train->num_total_words_, best_so_far);
 
       if (verbose) printf("%s\n", name);
       fprintf(train_log, "%s\n", name);
       fflush(train_log);
+
 
       if (save_lag > 0 && (iter % save_lag == 0)) {
         sprintf(name, "%s/iter@%05d", directory, iter);

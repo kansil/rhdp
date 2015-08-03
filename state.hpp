@@ -59,6 +59,7 @@ private:
   void read_from_file(const char* filename);
   int read_from_file(FILE* fileptr);
   void free_and_reset();
+  void init();
 };
 
 class HDPState {
