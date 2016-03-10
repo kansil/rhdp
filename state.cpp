@@ -2,7 +2,11 @@
 #include <algorithm>
 #include "state.hpp"
 #include <cmath>
+#include "utils.hpp"
+#include <iostream>
+#include <stdlib.h> 
 
+using namespace std;
 RhoMatrix::RhoMatrix(size_t vocab_size) {
   init();
   make_unit_matrix(vocab_size);
@@ -104,8 +108,12 @@ bool RhoMatrix::check(size_t vocab_size)
     }
   return true;
 }
-
 int RhoMatrix::read_from_file(FILE* fileptr) {
+    if (fileptr==NULL){
+      cerr<<"rho matrix can not be opened\n";
+      exit(0);
+    }
+
     char* lineptr = NULL;
     size_t linesize = 0;
 
@@ -138,6 +146,9 @@ int RhoMatrix::read_from_file(FILE* fileptr) {
       for (size_t j = 0; j < size; j++) {
         float f;
         fscanf(fileptr, "%f", &f);
+        float my_zero= 1e-6;  //TODO: Commandline option
+        if( f < my_zero )
+          f = my_zero;
         matrix[i][j] = f;
       }
     }
@@ -149,6 +160,10 @@ int RhoMatrix::read_from_file(FILE* fileptr) {
 
 void RhoMatrix::read_from_file(const char* filename) {
     FILE* fileptr = fopen(filename, "r");
+    if(fileptr==NULL){ 
+      cerr<<"rho matrix file can not be opened\n";
+      exit(0);
+    }
     printf("Reading %s: ", filename);
     read_from_file(fileptr);
     fclose(fileptr);
@@ -381,7 +396,7 @@ void HDPState::load_hdp_state(const char* name) {
 
   beta_u_.resize(num_topics_ + INIT_SIZE, 0.0);
   //beta_v_.resize(num_topics_ + INIT_SIZE, 0.0);
-  sprintf(filename, "%s.beta", name);
+    sprintf(filename, "%s.beta", name);
   FILE* stick_file = fopen(filename, "r");
   for (int k = 0; k < num_topics_; ++k) {
    // fscanf(stick_file, "%lf %lf", &(beta_u_[k]), &(beta_v_[k]));
@@ -496,6 +511,7 @@ void HDP::init_hdp(double eta, double gamma, double alpha, int size_vocab, const
 }
 
 
+
 void HDP::setup_doc_states(const vector<Document* >& docs) {
   remove_doc_states();
   num_docs_ = docs.size();
@@ -512,6 +528,32 @@ void HDP::setup_doc_states(const vector<Document* >& docs) {
 
   init_fast_gibbs_sampling_variables();
 }
+
+
+
+void HDP::updateTopicRhoAssignments() {
+  for (int k = 0; k < hdp_state_->num_topics_ ; ++k) {
+    double *q = new double [hdp_state_->size_vocab_];
+    memset(q, 0, sizeof(double)*hdp_state_->size_vocab_);
+    double total = 0;
+    for (int w1 = 0; w1 < hdp_state_->size_vocab_; ++w1) {
+      double prob=0;
+      for( int w=0; w<hdp_state_->size_vocab_; ++w) {
+        prob += hdp_state_->topic_lambda_[k][w] *
+          log(hdp_state_->rho_matrix_->get_element(w1,w) / hdp_state_->size_vocab_);
+      }
+		  total += exp(prob);
+		  q[w1] = total; //WARNING: Underflow?? Loss of precision?
+    }
+      	
+    double u=runiform() * total;
+    int w=0;
+    for ( w = 0; w < hdp_state_->size_vocab_; ++w)
+      if (u <q[w]) break;
+    hdp_state_->topic_rho_assignments_[k]=w;   
+    delete q;
+  }
+}	
 
 int HDP::iterate_gibbs_state(bool remove, bool permute) {
   if (permute) { // Permute data.

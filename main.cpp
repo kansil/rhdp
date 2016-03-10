@@ -166,8 +166,8 @@ int main(int argc, char* argv[]) {
     fprintf(setting_file, "alpha: %.4lf\n", alpha);
     fprintf(setting_file, "gamma_a: %.2lf\n", gamma_a);
     fprintf(setting_file, "gamma_b: %.4lf\n", gamma_b);
-    fprintf(setting_file, "gamma_a: %.2lf\n", alpha_a);
-    fprintf(setting_file, "gamma_b: %.4lf\n", alpha_b);
+    fprintf(setting_file, "alpha_a: %.2lf\n", alpha_a);
+    fprintf(setting_file, "alpha_b: %.4lf\n", alpha_b);
     fprintf(setting_file, "sample_hyper: %d\n", sample_hyper);
 
     fclose(setting_file);
@@ -217,17 +217,19 @@ int main(int argc, char* argv[]) {
 
       // Iterations.
       hdp->iterate_gibbs_state(true, true);
+      if ((iter %20==0) && !(rhomatrix_fn == NULL)) hdp->updateTopicRhoAssignments();
+
       // Scoring the documents.
       double likelihood = hdp->log_likelihood(NULL);
       hdp->compact_hdp_state();
 
       if (sample_hyper) hdp->hyper_inference(gamma_a, gamma_b, alpha_a, alpha_b);
-
       // Record the time.
       time(&current);
       int elapse = (int) difftime(current, start);
       total_time += elapse;
       best_so_far = ' ';
+
       if (iter > burn_in)
         {
           if (best_likelihood < likelihood)

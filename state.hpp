@@ -121,7 +121,7 @@ public:
   void remove_doc_states();
 
   void compact_hdp_state();
-
+  void updateTopicRhoAssignments();
   int iterate_gibbs_state(bool remove, bool permute);
   int  sample_word_assignment(DocState* doc_state, int i, bool remove, vct* p);
   void doc_state_update(DocState* doc_state, int i, int update);

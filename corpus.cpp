@@ -1,6 +1,8 @@
 #include "corpus.hpp"
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h> 
+#include <iostream>
 
 Corpus::Corpus() {
   num_docs_ = 0;
@@ -52,11 +54,13 @@ int Corpus::read_data(FILE* fileptr, int buffer_size, int OFFSET) {
 
 void Corpus::read_data(const char* data_filename, int OFFSET) {
   free_corpus();
-  int length = 0, count = 0, word = 0, n = 0, nd = 0, nw = 0;
-
+  int length = 0, count = 0, word = 0, n = 0, nd = 0, nw = 0;	
   FILE * fileptr;
   fileptr = fopen(data_filename, "r");
-
+  if(fileptr==NULL){ 
+	cerr<<"data file can not be opened\n";
+	exit(0);
+  }
   printf("Reading data from %s.\n", data_filename);
   while ((fscanf(fileptr, "%10d", &length) != EOF)) {
     Document * doc = new Document(length);
