@@ -548,7 +548,7 @@ void HDP::updateTopicRhoAssignments() {
       	
     double u=runiform() * total;
     int w=0;
-    for ( w = 0; w < hdp_state_->size_vocab_; ++w)
+    for ( w = 0; w < (hdp_state_->size_vocab_ - 1); ++w)
       if (u <q[w]) break;
     hdp_state_->topic_rho_assignments_[k]=w;   
     delete q;
